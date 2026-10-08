@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "WealthNova"
+description = "A mobile-first personal finance and investing app foundation with phone-based accounts, referral onboarding, plans, deposits, invites, and account management."
+version = "1.0.0"
+id = "artifacts/wealthnova"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21983
+
+[services.development]
+run = "pnpm --filter @workspace/wealthnova run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/wealthnova", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/wealthnova/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21983"
+BASE_PATH = "/"

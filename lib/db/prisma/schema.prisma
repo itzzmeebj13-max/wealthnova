@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INVITE_ONLY
+}
+
+model User {
+  id           String      @id @default(cuid())
+  mobileNumber String      @unique
+  passwordHash String
+  referralCode String      @unique
+  referredBy   String?
+  role         UserRole    @default(USER)
+  status       UserStatus  @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  referrer  User?     @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: Restrict)
+  referrals User[]    @relation("UserReferrals")
+  sessions  Session[]
+
+  @@index([referredBy])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}

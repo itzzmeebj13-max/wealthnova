@@ -5,21 +5,17 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./prisma": "./src/prisma.ts"
   },
   "scripts": {
-    "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "prisma:generate": "prisma generate --schema ./prisma/schema.prisma",
+    "db:push": "prisma db push --schema ./prisma/schema.prisma",
+    "db:seed": "node ./prisma/seed.mjs"
   },
   "dependencies": {
-    "drizzle-orm": "catalog:",
-    "drizzle-zod": "^0.8.3",
-    "pg": "^8.23.0",
-    "zod": "catalog:"
+    "@prisma/client": "6.19.0"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "@types/pg": "^8.23.1",
-    "drizzle-kit": "^0.31.10"
+    "prisma": "6.19.0"
   }
 }
