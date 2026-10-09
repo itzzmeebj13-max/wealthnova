@@ -143,6 +143,7 @@ router.post("/auth/register", async (request, response) => {
           passwordHash,
           referralCode: newReferralCode,
           referredBy: referrer.id,
+          wallet: { create: {} },
         },
         select: publicUserSelect,
       });
