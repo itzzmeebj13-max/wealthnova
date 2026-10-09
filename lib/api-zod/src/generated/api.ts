@@ -799,6 +799,53 @@ export const RejectWithdrawalResponse = zod.object({
 })
 
 
+export const HandoffWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string()
+})
+
+
+export const handoffWithdrawalBodyReconciliationNoteMin = 20;
+export const handoffWithdrawalBodyReconciliationNoteMax = 1000;
+
+export const handoffWithdrawalBodyPayoutReferenceMin = 6;
+export const handoffWithdrawalBodyPayoutReferenceMax = 64;
+
+export const handoffWithdrawalBodyPaidAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+
+
+export const HandoffWithdrawalBody = zod.object({
+  "expectedProcessorId": zod.string().min(1),
+  "expectedUpdatedAt": zod.coerce.date(),
+  "payoutStatus": zod.enum(['NOT_SENT', 'SENT']),
+  "confirmedPreviousProcessorStopped": zod.boolean(),
+  "reconciliationNote": zod.string().min(handoffWithdrawalBodyReconciliationNoteMin).max(handoffWithdrawalBodyReconciliationNoteMax),
+  "payoutReference": zod.string().min(handoffWithdrawalBodyPayoutReferenceMin).max(handoffWithdrawalBodyPayoutReferenceMax).optional(),
+  "paidAmount": zod.string().regex(handoffWithdrawalBodyPaidAmountRegExp).optional()
+})
+
+export const HandoffWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
 export const GetWithdrawalAuditParams = zod.object({
   "withdrawalId": zod.coerce.string()
 })
@@ -806,7 +853,10 @@ export const GetWithdrawalAuditParams = zod.object({
 export const GetWithdrawalAuditResponseItem = zod.object({
   "id": zod.string(),
   "adminId": zod.string(),
-  "decision": zod.enum(['PROCESSING', 'COMPLETED', 'REJECTED']),
+  "decision": zod.enum(['PROCESSING', 'COMPLETED', 'REJECTED', 'REASSIGNED']),
+  "fromAdminId": zod.string().optional(),
+  "toAdminId": zod.string().optional(),
+  "payoutStatus": zod.enum(['NOT_SENT', 'SENT']).optional(),
   "payoutReference": zod.string().nullable(),
   "note": zod.string(),
   "createdAt": zod.string()

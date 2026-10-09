@@ -3,7 +3,7 @@ import { prisma } from "@workspace/db";
 import { normalizePhilippineMobileNumber, type WithdrawalInput } from "@workspace/api-zod";
 import { DepositError } from "./private-images";
 
-export type WithdrawalDatabase = Pick<PrismaClient, "wallet" | "withdrawalRequest" | "withdrawalAudit" | "withdrawalNotification"> & {
+export type WithdrawalDatabase = Pick<PrismaClient, "wallet" | "withdrawalRequest" | "withdrawalAudit" | "withdrawalHandoff" | "withdrawalNotification"> & {
   $transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>, options?: { isolationLevel: Prisma.TransactionIsolationLevel }): Promise<T>;
 };
 export const withdrawalInclude = { user: { select: { mobileNumber: true } } } as const;

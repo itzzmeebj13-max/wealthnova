@@ -564,6 +564,29 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Withdrawal" }
+  /admin/withdrawals/{withdrawalId}/handoff:
+    post:
+      operationId: handoffWithdrawal
+      tags: [withdrawals]
+      parameters:
+        - { name: withdrawalId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WithdrawalHandoffInput" }
+      responses:
+        "200":
+          description: Reconciled ownership transferred to the signed-in Admin; funds remain reserved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Withdrawal" }
+        "400":
+          description: Missing reconciliation or handoff confirmation
+        "403":
+          description: Active Admin required; no self-review
+        "409":
+          description: Ownership changed or conflicting payment evidence
   /admin/withdrawals/{withdrawalId}/audit:
     get:
       operationId: getWithdrawalAudit
@@ -923,6 +946,17 @@ components:
       properties:
         reason: { type: string, minLength: 5, maxLength: 1000 }
         confirmedNoPayoutSent: { type: boolean }
+    WithdrawalHandoffInput:
+      type: object
+      required: [expectedProcessorId, expectedUpdatedAt, payoutStatus, confirmedPreviousProcessorStopped, reconciliationNote]
+      properties:
+        expectedProcessorId: { type: string, minLength: 1 }
+        expectedUpdatedAt: { type: string, format: date-time }
+        payoutStatus: { type: string, enum: [NOT_SENT, SENT] }
+        confirmedPreviousProcessorStopped: { type: boolean }
+        reconciliationNote: { type: string, minLength: 20, maxLength: 1000 }
+        payoutReference: { type: string, minLength: 6, maxLength: 64 }
+        paidAmount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
     Withdrawal:
       type: object
       required: [id, userId, userMobileNumber, requestedAmount, feeAmount, netAmount, feePercent, accountName, accountNumber, status, processingById, reviewedById, processedAt, completedAt, payoutReference, verificationNote, rejectionReason, createdAt, updatedAt]
@@ -969,7 +1003,10 @@ components:
       properties:
         id: { type: string }
         adminId: { type: string }
-        decision: { type: string, enum: [PROCESSING, COMPLETED, REJECTED] }
+        decision: { type: string, enum: [PROCESSING, COMPLETED, REJECTED, REASSIGNED] }
+        fromAdminId: { type: string }
+        toAdminId: { type: string }
+        payoutStatus: { type: string, enum: [NOT_SENT, SENT] }
         payoutReference: { type: [string, "null"] }
         note: { type: string }
         createdAt: { type: string }

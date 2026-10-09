@@ -214,6 +214,34 @@ export interface RejectWithdrawalInput {
   confirmedNoPayoutSent: boolean;
 }
 
+export type WithdrawalHandoffInputPayoutStatus = typeof WithdrawalHandoffInputPayoutStatus[keyof typeof WithdrawalHandoffInputPayoutStatus];
+
+
+export const WithdrawalHandoffInputPayoutStatus = {
+  NOT_SENT: 'NOT_SENT',
+  SENT: 'SENT',
+} as const;
+
+export interface WithdrawalHandoffInput {
+  /** @minLength 1 */
+  expectedProcessorId: string;
+  expectedUpdatedAt: string;
+  payoutStatus: WithdrawalHandoffInputPayoutStatus;
+  confirmedPreviousProcessorStopped: boolean;
+  /**
+     * @minLength 20
+     * @maxLength 1000
+     */
+  reconciliationNote: string;
+  /**
+     * @minLength 6
+     * @maxLength 64
+     */
+  payoutReference?: string;
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  paidAmount?: string;
+}
+
 export type WithdrawalStatus = typeof WithdrawalStatus[keyof typeof WithdrawalStatus];
 
 
@@ -276,12 +304,24 @@ export const WithdrawalAuditEntryDecision = {
   PROCESSING: 'PROCESSING',
   COMPLETED: 'COMPLETED',
   REJECTED: 'REJECTED',
+  REASSIGNED: 'REASSIGNED',
+} as const;
+
+export type WithdrawalAuditEntryPayoutStatus = typeof WithdrawalAuditEntryPayoutStatus[keyof typeof WithdrawalAuditEntryPayoutStatus];
+
+
+export const WithdrawalAuditEntryPayoutStatus = {
+  NOT_SENT: 'NOT_SENT',
+  SENT: 'SENT',
 } as const;
 
 export interface WithdrawalAuditEntry {
   id: string;
   adminId: string;
   decision: WithdrawalAuditEntryDecision;
+  fromAdminId?: string;
+  toAdminId?: string;
+  payoutStatus?: WithdrawalAuditEntryPayoutStatus;
   /** @nullable */
   payoutReference: string | null;
   note: string;

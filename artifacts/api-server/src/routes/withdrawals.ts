@@ -5,11 +5,13 @@ import {
   GetWithdrawalSummaryResponse, GetWithdrawalQuoteResponse, GetMyWithdrawalsResponse,
   SubmitWithdrawalResponse, GetAdminWithdrawalsResponse, ProcessWithdrawalResponse,
   CompleteWithdrawalResponse, RejectWithdrawalResponse, GetWithdrawalAuditResponse,
+  HandoffWithdrawalBody, HandoffWithdrawalResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { DepositError } from "../lib/private-images";
 import { requestWithdrawal, withdrawalAmounts, withdrawalInclude, mapWithdrawal, withdrawalSummary, type WithdrawalDatabase } from "../lib/withdrawals";
 import { decideWithdrawal } from "../lib/withdrawal-decisions";
+import { handoffWithdrawal } from "../lib/withdrawal-handoffs";
 
 const adminOnly: RequestHandler = (req, res, next) => {
   if (req.user?.role !== "ADMIN") { res.status(403).json({ error: "Administrator access is required." }); return; }
@@ -80,9 +82,17 @@ export function createWithdrawalRouter(database: WithdrawalDatabase = prisma): I
     if (!input.success) throw new DepositError("Enter a rejection reason and confirm no payout was sent.");
     res.json(RejectWithdrawalResponse.parse(mapWithdrawal(await decideWithdrawal(req.user!.id, String(req.params.withdrawalId), { type: "REJECT", data: input.data }, database))));
   }));
+  router.post("/admin/withdrawals/:withdrawalId/handoff", adminOnly, mutation, safe(async (req, res) => {
+    const input = HandoffWithdrawalBody.safeParse(req.body);
+    if (!input.success) throw new DepositError("Provide the current processor, reconciliation details and coordinated handoff confirmation.");
+    res.json(HandoffWithdrawalResponse.parse(mapWithdrawal(await handoffWithdrawal(req.user!.id, String(req.params.withdrawalId), input.data, database))));
+  }));
   router.get("/admin/withdrawals/:withdrawalId/audit", adminOnly, safe(async (req, res) => {
     const rows = await database.withdrawalAudit.findMany({ where: { withdrawalId: String(req.params.withdrawalId) }, orderBy: { createdAt: "asc" } });
-    res.json(GetWithdrawalAuditResponse.parse(rows.map(row => ({ ...row, createdAt: row.createdAt.toISOString() }))));
+    const handoffs = await database.withdrawalHandoff.findMany({ where: { withdrawalId: String(req.params.withdrawalId) } });
+    const entries = [...rows, ...handoffs.map(h => ({ ...h, adminId: h.toAdminId, decision: "REASSIGNED" }))];
+    entries.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+    res.json(GetWithdrawalAuditResponse.parse(entries.map(row => ({ ...row, createdAt: row.createdAt.toISOString() }))));
   }));
   return router;
 }

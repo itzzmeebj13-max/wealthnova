@@ -8,6 +8,7 @@ import { prisma } from "@workspace/db";
 import { startSession } from "./auth-session";
 import { createWithdrawalRouter } from "../routes/withdrawals";
 import { withdrawalAmounts, type WithdrawalDatabase } from "./withdrawals";
+import { handoffWithdrawal } from "./withdrawal-handoffs";
 
 const ids: string[] = [];
 const rollback = new Error("ROLLBACK_ONLY_WITHDRAWAL_TEST");
@@ -20,7 +21,7 @@ try {
   for (const invalid of ["0", "-1", "1.001", "NaN", "1e3"]) assert.throws(() => withdrawalAmounts(invalid));
   const root = await prisma.user.findUniqueOrThrow({ where: { mobileNumber: "WEALTHNOVA-ROOT" } });
   const cookies: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const user = await prisma.user.create({ data: {
       mobileNumber: `+639${randomInt(0, 1_000_000_000).toString().padStart(9, "0")}`,
       passwordHash: "ROLLBACK_TEST_FIXTURE_NOT_A_LOGIN_PASSWORD", referralCode: `WDTEST-${randomUUID()}`,
@@ -43,7 +44,7 @@ try {
       }
       let scope = 0;
       const db: WithdrawalDatabase = {
-        wallet: tx.wallet, withdrawalRequest: tx.withdrawalRequest, withdrawalAudit: tx.withdrawalAudit,
+        wallet: tx.wallet, withdrawalRequest: tx.withdrawalRequest, withdrawalAudit: tx.withdrawalAudit, withdrawalHandoff: tx.withdrawalHandoff,
         withdrawalNotification: tx.withdrawalNotification,
         $transaction: async fn => {
           // Each HTTP operation gets real rollback semantics inside the outer,
@@ -162,9 +163,93 @@ try {
       assert.equal((await action(otherReq.id, "process", {})).status, 200);
       assert.equal((await action(otherReq.id, "complete", complete)).status, 409, "Payout references cannot be reused");
       assert.equal((await action(otherReq.id, "reject", reject)).status, 200, "Processing rejection releases funds too");
+      const handoffReq = await (await withdraw({ ...input, amount: "500", idempotencyKey: randomUUID() })).json() as { id: string };
+      const handoffInput = (record: { processingById: string | null; updatedAt: Date }) => ({
+        expectedProcessorId: record.processingById!, expectedUpdatedAt: record.updatedAt.toISOString(),
+        payoutStatus: "NOT_SENT" as const, confirmedPreviousProcessorStopped: true,
+        reconciliationNote: "ROLLBACK TEST: custodian checked history, no pending/successful transfer; previous processor access stopped.",
+      });
+      const pendingHandoff = { ...handoffInput({ processingById: admin, updatedAt: new Date() }) };
+      assert.equal((await action(handoffReq.id, "handoff", pendingHandoff, cookies[3])).status, 409, "Only Processing requests can be handed off");
+      assert.equal((await action(handoffReq.id, "process", {})).status, 200);
+      const original = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: handoffReq.id } });
+      const handoff = handoffInput(original);
+      const fundsBefore = await wallet();
+      const ledgerBefore = await tx.ledgerEntry.count({ where: { withdrawalId: handoffReq.id } });
+      assert.equal((await action(handoffReq.id, "handoff", handoff, "")).status, 401);
+      assert.equal((await action(handoffReq.id, "handoff", handoff, cookies[0])).status, 403);
+      assert.equal((await post(`/admin/withdrawals/${handoffReq.id}/handoff`, handoff, cookies[3], false)).status, 403);
+      await tx.user.update({ where: { id: ids[3] }, data: { status: "SUSPENDED" } });
+      assert.equal((await action(handoffReq.id, "handoff", handoff, cookies[3])).status, 403, "Active Admin rechecked inside transaction");
+      await tx.user.update({ where: { id: ids[3] }, data: { status: "ACTIVE", role: "USER" } });
+      await assert.rejects(handoffWithdrawal(ids[3], handoffReq.id, { ...handoff, expectedUpdatedAt: new Date(handoff.expectedUpdatedAt) }, db), /Active Administrator/);
+      await tx.user.update({ where: { id: ids[3] }, data: { role: "ADMIN" } });
+      assert.equal((await action(handoffReq.id, "handoff", handoff)).status, 409, "Current processor cannot hand off to themselves");
+      for (const invalid of [
+        { ...handoff, confirmedPreviousProcessorStopped: false },
+        { ...handoff, payoutStatus: "UNKNOWN" },
+        { ...handoff, reconciliationNote: " ".repeat(20) },
+        { ...handoff, payoutStatus: "SENT" },
+        { ...handoff, payoutStatus: "NOT_SENT", payoutReference: "UNEXPECTED" },
+      ]) assert.equal((await action(handoffReq.id, "handoff", invalid, cookies[3])).status, 400);
+      assert.equal((await action(handoffReq.id, "handoff", { ...handoff, expectedProcessorId: ids[4] }, cookies[3])).status, 409);
+      assert.equal((await action(handoffReq.id, "handoff", { ...handoff, expectedUpdatedAt: new Date(original.updatedAt.getTime() - 1).toISOString() }, cookies[3])).status, 409, "Stale version is rejected even with matching processor");
+      assert.equal((await action(handoffReq.id, "handoff", handoff, cookies[3])).status, 200);
+      // Competing recipient's stale snapshot must lose, not steal the review.
+      assert.equal((await action(handoffReq.id, "handoff", handoff, cookies[4])).status, 409);
+      assert.equal((await action(handoffReq.id, "handoff", handoff, cookies[3])).status, 409, "Replay adds no new handoff or financial effect");
+      const transferred = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: handoffReq.id } });
+      assert.equal(transferred.processingById, ids[3]); assert.equal(transferred.status, "PROCESSING");
+      assert.equal(transferred.processedAt!.toISOString(), original.processedAt!.toISOString());
+      assert.equal((await wallet()).availableBalance.toFixed(2), fundsBefore.availableBalance.toFixed(2));
+      assert.equal((await wallet()).reservedBalance.toFixed(2), fundsBefore.reservedBalance.toFixed(2));
+      assert.equal((await wallet()).activeWithdrawalId, handoffReq.id);
+      assert.equal(await tx.ledgerEntry.count({ where: { withdrawalId: handoffReq.id } }), ledgerBefore);
+      assert.equal(await tx.withdrawalAudit.count({ where: { withdrawalId: handoffReq.id } }), 1);
+      assert.equal(await tx.withdrawalNotification.count({ where: { withdrawalId: handoffReq.id } }), 1);
+      assert.equal((await action(handoffReq.id, "complete", { ...complete, paidAmount: "475" })).status, 409);
+      assert.equal((await action(handoffReq.id, "reject", reject)).status, 409, "Old processor cannot release funds");
+      const sentHandoff = { ...handoffInput(transferred), payoutStatus: "SENT" as const, payoutReference: `HANDOFF${randomUUID().replaceAll("-", "").toUpperCase()}`, paidAmount: "475.00" };
+      assert.equal((await action(handoffReq.id, "handoff", { ...sentHandoff, payoutReference: complete.payoutReference }, cookies[4])).status, 409);
+      assert.equal((await action(handoffReq.id, "handoff", { ...sentHandoff, paidAmount: "470" }, cookies[4])).status, 400);
+      assert.equal((await action(handoffReq.id, "handoff", sentHandoff, cookies[4])).status, 200);
+      const sentRecord = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: handoffReq.id } });
+      assert.equal(sentRecord.payoutReference, sentHandoff.payoutReference);
+      assert.equal(sentRecord.status, "PROCESSING");
+      assert.equal((await action(handoffReq.id, "reject", reject, cookies[4])).status, 409, "Already-sent payment cannot be refunded");
+      assert.equal((await action(handoffReq.id, "handoff", handoffInput(sentRecord), cookies[3])).status, 409, "Already-sent payment evidence cannot be removed");
+      assert.equal((await action(handoffReq.id, "handoff", { ...handoffInput(sentRecord), payoutStatus: "SENT", paidAmount: "475", payoutReference: "DIFFERENTREF" }, cookies[3])).status, 409);
+      const sentComplete = { ...complete, payoutReference: sentHandoff.payoutReference, paidAmount: "475" };
+      assert.equal((await action(handoffReq.id, "complete", { ...sentComplete, payoutReference: "DIFFERENTREF" }, cookies[4])).status, 409);
+      assert.equal((await action(handoffReq.id, "complete", sentComplete, cookies[3])).status, 409);
+      assert.equal((await action(handoffReq.id, "complete", sentComplete, cookies[4])).status, 200);
+      assert.equal((await action(handoffReq.id, "complete", sentComplete, cookies[4])).status, 200);
+      assert.equal((await action(handoffReq.id, "handoff", sentHandoff, cookies[3])).status, 409, "Final records cannot be handed off");
+      assert.equal(await tx.ledgerEntry.count({ where: { withdrawalId: handoffReq.id } }), 4, "Handoff plus completion has exact-once financial effects");
+      assert.equal(await tx.withdrawalHandoff.count({ where: { withdrawalId: handoffReq.id } }), 2);
+      const combinedAudit = await (await get(`/admin/withdrawals/${handoffReq.id}/audit`, cookies[4])).json() as { decision: string; fromAdminId?: string; toAdminId?: string; payoutStatus?: string }[];
+      assert.equal(combinedAudit.length, 4, "Original processing, both handoffs, and completion preserved");
+      assert.ok(combinedAudit.some(a => a.decision === "REASSIGNED" && a.fromAdminId === ids[3] && a.toAdminId === ids[4] && a.payoutStatus === "SENT"));
+      const unsentReq = await (await withdraw({ ...input, amount: "100", idempotencyKey: randomUUID() })).json() as { id: string };
+      assert.equal((await action(unsentReq.id, "process", {})).status, 200);
+      const unsentRecord = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: unsentReq.id } });
+      assert.equal((await action(unsentReq.id, "handoff", handoffInput(unsentRecord), cookies[3])).status, 200);
+      const unsentTransferred = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: unsentReq.id } });
+      assert.equal((await action(unsentReq.id, "handoff", handoffInput(unsentTransferred))).status, 200, "Repeated coordinated handoffs preserve history");
+      assert.equal((await action(unsentReq.id, "handoff", handoffInput(unsentRecord), cookies[4])).status, 409, "Returning to same processor cannot revive an old snapshot");
+      assert.equal((await action(unsentReq.id, "reject", reject, cookies[3])).status, 409);
+      const balanceBeforeRelease = await wallet();
+      assert.equal((await action(unsentReq.id, "reject", reject)).status, 200);
+      assert.equal((await action(unsentReq.id, "reject", reject)).status, 200);
+      assert.equal((await wallet()).availableBalance.toFixed(2), balanceBeforeRelease.availableBalance.plus(100).toFixed(2));
+      assert.equal(await tx.ledgerEntry.count({ where: { withdrawalId: unsentReq.id, type: "WITHDRAWAL_RELEASE" } }), 1);
+      assert.equal(await tx.withdrawalHandoff.count({ where: { withdrawalId: unsentReq.id } }), 2);
       const ownAdminReq = await (await withdraw({ ...input, idempotencyKey: randomUUID() }, cookies[2])).json() as { id: string };
       assert.equal((await action(ownAdminReq.id, "process", {})).status, 403, "No self-review");
       assert.equal((await action(ownAdminReq.id, "reject", reject)).status, 403);
+      assert.equal((await action(ownAdminReq.id, "process", {}, cookies[3])).status, 200);
+      const ownRecord = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: ownAdminReq.id } });
+      assert.equal((await action(ownAdminReq.id, "handoff", handoffInput(ownRecord))).status, 403, "No self-review during takeover");
       assert.equal((await action(ownAdminReq.id, "reject", reject, cookies[3])).status, 200);
       assert.equal(await tx.withdrawalAudit.count({ where: { adminId: admin, decision: "COMPLETED" } }), 1);
       throw rollback;
@@ -173,8 +258,9 @@ try {
   assert.equal(await prisma.withdrawalRequest.count({ where: { userId: { in: ids } } }), 0);
   assert.equal(await prisma.ledgerEntry.count({ where: { userId: { in: ids } } }), 0);
   assert.equal(await prisma.withdrawalAudit.count({ where: { adminId: { in: ids } } }), 0);
+  assert.equal(await prisma.withdrawalHandoff.count({ where: { toAdminId: { in: ids } } }), 0);
   for (const userId of ids) assert.equal((await prisma.wallet.findUniqueOrThrow({ where: { userId } })).availableBalance.toFixed(2), "0.00");
-  process.stdout.write("PASS: 5% fees/rounding; verified balance; gross reservations; duplicate requests; Processing not payout; verified completion; duplicate references/completions; Pending/Processing rejection; exact-once gross release; ledger buckets; audit/notifications; ownership/auth/CSRF; self-review and assigned processor. All financial fixtures rolled back, no actual transfer.\n");
+  process.stdout.write("PASS: withdrawal accounting/auth; reconciled handoff permissions, conflicts/replays, retained reserves/history, previous processor blocked, already-sent evidence locked, exact-once completion, no self-review. All financial fixtures rolled back, no actual transfer.\n");
 } finally {
   if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
   await prisma.user.deleteMany({ where: { id: { in: ids } } });

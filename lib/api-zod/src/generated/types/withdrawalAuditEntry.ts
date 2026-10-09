@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { WithdrawalAuditEntryDecision } from './withdrawalAuditEntryDecision';
+import type { WithdrawalAuditEntryPayoutStatus } from './withdrawalAuditEntryPayoutStatus';
 
 export interface WithdrawalAuditEntry {
   id: string;
   adminId: string;
   decision: WithdrawalAuditEntryDecision;
+  fromAdminId?: string;
+  toAdminId?: string;
+  payoutStatus?: WithdrawalAuditEntryPayoutStatus;
   /** @nullable */
   payoutReference: string | null;
   note: string;

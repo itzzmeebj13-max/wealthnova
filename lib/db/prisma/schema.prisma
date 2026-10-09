@@ -91,6 +91,8 @@ model User {
   processingWithdrawals WithdrawalRequest[] @relation("WithdrawalProcessor")
   reviewedWithdrawals WithdrawalRequest[] @relation("WithdrawalReviewer")
   withdrawalAudits WithdrawalAudit[]
+  receivedWithdrawalHandoffs WithdrawalHandoff[] @relation("HandoffReceiver")
+  previousWithdrawalHandoffs WithdrawalHandoff[] @relation("HandoffPrevious")
   withdrawalNotifications WithdrawalNotification[]
   referralCommissions ReferralCommission[] @relation("CommissionBeneficiary")
   generatedCommissions ReferralCommission[] @relation("CommissionSourceUser")
@@ -223,11 +225,27 @@ model WithdrawalRequest {
   reviewer User? @relation("WithdrawalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
   ledgerEntries LedgerEntry[]
   audits WithdrawalAudit[]
+  handoffs WithdrawalHandoff[]
   notifications WithdrawalNotification[]
   companyFundEntries CompanyFundEntry[]
   @@unique([userId, idempotencyKey])
   @@index([userId, createdAt])
   @@index([status, createdAt])
+}
+
+model WithdrawalHandoff {
+  id String @id @default(cuid())
+  withdrawalId String
+  fromAdminId String
+  toAdminId String
+  payoutStatus String
+  payoutReference String?
+  note String
+  createdAt DateTime @default(now())
+  withdrawal WithdrawalRequest @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
+  previousAdmin User @relation("HandoffPrevious", fields: [fromAdminId], references: [id], onDelete: Restrict)
+  receivingAdmin User @relation("HandoffReceiver", fields: [toAdminId], references: [id], onDelete: Restrict)
+  @@index([withdrawalId, createdAt])
 }
 
 model WithdrawalAudit {

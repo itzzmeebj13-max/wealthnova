@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { LoaderCircle, ShieldAlert } from 'lucide-react';
@@ -17,6 +17,7 @@ import {
 } from '@workspace/api-client-react';
 import type { Withdrawal } from '@workspace/api-client-react';
 import { errMsg, peso, when } from '@/components/withdrawal-content';
+import { WithdrawalHandoffForm } from '@/components/withdrawal-handoff-form';
 
 const REQ = { request: { headers: { 'X-WealthNova-Request': '1' } } };
 const FILTERS = [['ALL', 'All'], ['PENDING', 'Pending'], ['PROCESSING', 'Processing'], ['COMPLETED', 'Completed'], ['REJECTED', 'Rejected']] as const;
@@ -34,6 +35,7 @@ function Audit({ id }: { id: string }) {
       {q.data?.map(a => <div key={a.id} className="wn-summary-row" style={{ display: 'block' }} data-testid={`audit-entry-${a.id}`}>
         <div><strong style={{ textAlign: 'left' }}>{a.decision}</strong> by admin {a.adminId} · {when(a.createdAt)}</div>
         {a.payoutReference && <div>Reference: {a.payoutReference}</div>}
+        {a.fromAdminId && <div>From: {a.fromAdminId} → To: {a.toAdminId} · Payment: {a.payoutStatus}</div>}
         <div style={{ whiteSpace: 'pre-wrap' }}>Note: {a.note}</div>
       </div>)}
     </div>
@@ -45,7 +47,7 @@ function Card({ w, selfId, onNotice }: { w: Withdrawal; selfId: string; onNotice
   const proc = useProcessWithdrawal(REQ);
   const complete = useCompleteWithdrawal(REQ);
   const reject = useRejectWithdrawal(REQ);
-  const [mode, setMode] = useState<'' | 'complete' | 'reject'>('');
+  const [mode, setMode] = useState<'' | 'complete' | 'reject' | 'handoff'>('');
   const [open, setOpen] = useState(false);
   const [ref, setRef] = useState('');
   const [paid, setPaid] = useState('');
@@ -59,6 +61,10 @@ function Card({ w, selfId, onNotice }: { w: Withdrawal; selfId: string; onNotice
   const mine = w.processingById === selfId;
 
   const reset = () => { setMode(''); setRef(''); setPaid(''); setSent(false); setNote(''); setReason(''); setNoPayout(false); setErr(''); };
+  useEffect(() => {
+    // Polling must also revoke open action forms after another Admin takes over.
+    reset();
+  }, [w.processingById, w.status]);
   const done = (text: string) => {
     void client.invalidateQueries({ queryKey: getGetAdminWithdrawalsQueryKey() });
     void client.invalidateQueries({ queryKey: getGetWithdrawalAuditQueryKey(w.id) });
@@ -115,22 +121,25 @@ function Card({ w, selfId, onNotice }: { w: Withdrawal; selfId: string; onNotice
           <button className="wn-button wn-button-quiet" disabled={self || busy} onClick={() => { setErr(''); setMode('reject'); }} data-testid={`button-reject-${w.id}`}>Reject</button>
         </>}
         {w.status === 'PROCESSING' && !mode && <>
-          <button className="wn-button" disabled={!mine || self || busy} onClick={() => { setErr(''); setMode('complete'); }} data-testid={`button-complete-${w.id}`}>Complete</button>
-          <button className="wn-button wn-button-quiet" disabled={!mine || self || busy} onClick={() => { setErr(''); setMode('reject'); }} data-testid={`button-reject-${w.id}`}>Reject</button>
+          <button className="wn-button" disabled={!mine || self || busy} onClick={() => { setErr(''); setRef(w.payoutReference ?? ''); setPaid(w.payoutReference ? w.netAmount : ''); setMode('complete'); }} data-testid={`button-complete-${w.id}`}>Complete</button>
+          <button className="wn-button wn-button-quiet" disabled={!mine || self || busy || !!w.payoutReference} onClick={() => { setErr(''); setMode('reject'); }} data-testid={`button-reject-${w.id}`}>Reject</button>
+          {!mine && <button className="wn-button wn-button-quiet" disabled={self || busy} onClick={() => { setErr(''); setMode('handoff'); }} data-testid={`button-handoff-${w.id}`}>Reconcile & take over</button>}
         </>}
         <button className="wn-button wn-button-light" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid={`button-audit-${w.id}`}>{open ? 'Hide audit log' : 'Audit log'}</button>
       </div>
       {self && (w.status === 'PENDING' || w.status === 'PROCESSING') && <p className="wn-helper" style={{ marginTop: 8 }}>You can’t review your own withdrawal. Another administrator must.</p>}
       {w.status === 'PENDING' && <p className="wn-helper" style={{ marginTop: 8 }}>Starting processing is review only. It does not mean money was sent.</p>}
-      {w.status === 'PROCESSING' && !mine && <p className="wn-helper" style={{ marginTop: 8 }}>Only the administrator who started processing can complete or reject this request.</p>}
+      {w.status === 'PROCESSING' && !mine && <p className="wn-helper" style={{ marginTop: 8 }}>Only the assigned processor can complete or reject. If unavailable, reconcile payment and coordinate an audited handoff first.</p>}
+      {w.status === 'PROCESSING' && w.payoutReference && <div className="wn-feedback" role="status">Payment already reconciled as sent. Do not send again or reject. Complete using reference {w.payoutReference}.</div>}
+      {mode === 'handoff' && <WithdrawalHandoffForm withdrawal={w} onCancel={reset} onDone={() => done(`Withdrawal ${w.id} handed off to you. Funds remain reserved; no payment was sent by this app.`)} />}
       {mode === 'complete' && w.status === 'PROCESSING' && (
         <fieldset disabled={busy} className="wn-confirm" style={{ border: 0, minWidth: 0 }}>
-          <p>Complete only after you have actually sent <strong>{peso(w.netAmount)}</strong> to GCash {w.accountNumber} ({w.accountName}) and independently verified the transfer. This app does not send money.</p>
+          <p>{w.payoutReference ? 'Do not send again. Record the already-sent payment after independently verifying' : 'Complete only after actually sending and independently verifying'} <strong>{peso(w.netAmount)}</strong> to GCash {w.accountNumber} ({w.accountName}). This app does not send money.</p>
           {err && <div className="wn-feedback error" role="alert" data-testid="error-admin-withdrawal">{err}</div>}
           <div className="wn-field"><label htmlFor={`pr-${w.id}`}>Payout reference (6–64 characters)</label><input id={`pr-${w.id}`} className="wn-input" maxLength={64} value={ref} onChange={e => setRef(e.target.value)} data-testid="input-payout-reference" /></div>
           <div className="wn-field"><label htmlFor={`pa-${w.id}`}>Actual amount paid (PHP)</label><input id={`pa-${w.id}`} className="wn-input" inputMode="decimal" value={paid} onChange={e => setPaid(e.target.value)} data-testid="input-paid-amount" /></div>
           <div className="wn-field"><label htmlFor={`pn-${w.id}`}>Verification note (10–1000 characters)</label><textarea id={`pn-${w.id}`} className="wn-input" style={{ height: 90, padding: 12 }} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} data-testid="input-verification-note" /></div>
-          <label style={lbl}><input type="checkbox" style={chk} checked={sent} onChange={e => setSent(e.target.checked)} data-testid="checkbox-payout-sent" />I sent this GCash payout and independently verified it</label>
+          <label style={lbl}><input type="checkbox" style={chk} checked={sent} onChange={e => setSent(e.target.checked)} data-testid="checkbox-payout-sent" />I independently verified this GCash payout was sent; I will not send it again</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="wn-button" onClick={sendComplete} data-testid="button-confirm-complete">{complete.isPending && <LoaderCircle className="animate-spin" size={16} />}Confirm completion</button>
             <button className="wn-button wn-button-quiet" type="button" onClick={reset}>Cancel</button>

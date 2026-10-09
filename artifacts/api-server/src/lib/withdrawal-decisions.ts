@@ -25,6 +25,12 @@ export async function decideWithdrawal(adminId: string, withdrawalId: string, de
     const record = await tx.withdrawalRequest.findUnique({ where: { id: withdrawalId }, include: withdrawalInclude });
     if (!record) throw new DepositError("Withdrawal not found.", 404);
     if (record.userId === adminId) throw new DepositError("Administrators cannot review their own withdrawals.", 403);
+    if (record.payoutReference && decision.type === "REJECT") {
+      throw new DepositError("A reconciled payout was already sent. It cannot be rejected or refunded.", 409);
+    }
+    if (record.payoutReference && decision.type === "COMPLETE" && record.payoutReference !== reference) {
+      throw new DepositError("Complete using the already reconciled payout reference. Never send again.", 409);
+    }
     if (decision.type === "COMPLETE" && !withdrawalAmounts(decision.data.paidAmount).amount.equals(record.netAmount)) {
       throw new DepositError("The actual paid amount must match this withdrawal's net payout exactly.");
     }
@@ -43,7 +49,8 @@ export async function decideWithdrawal(adminId: string, withdrawalId: string, de
     if (decision.type === "COMPLETE" && record.status !== "PROCESSING") {
       throw new DepositError("Review and start Processing before recording the actual payout.", 409);
     }
-    if (reference && await tx.withdrawalRequest.findUnique({ where: { payoutReference: reference } })) {
+    const referenceOwner = reference ? await tx.withdrawalRequest.findUnique({ where: { payoutReference: reference } }) : null;
+    if (referenceOwner && referenceOwner.id !== record.id) {
       throw new DepositError("That GCash payout reference was already used. No duplicate payout was recorded.", 409);
     }
     const now = new Date();

@@ -26,7 +26,21 @@ Pending requests can also be rejected without starting Processing. Only the assi
 
 **Do not resend a payout after a network error.** Reconcile the GCash transaction and retry recording the same reference. Conflicting or reused references are rejected. The app cannot prevent an operator from manually sending money twice outside it.
 
-A stalled Processing request must not be blindly reassigned or refunded. Its processor must reconcile whether an external payment occurred first. There is no automatic payout, automatic timeout refund, or implicit reassignment.
+A stalled Processing request must not be blindly reassigned or refunded. There is no automatic payout, automatic timeout refund, or implicit reassignment.
+
+### Unavailable processor: audited handoff
+
+An active Admin other than the member or current processor can use **Reconcile & take over** on a Processing request. The receiving Admin accepts ownership themselves; this is not an assignment to an absent third party.
+
+1. Reconcile the actual GCash transaction history against the recipient and exact net amount. Unknown, pending, ambiguous, or mismatched payments must remain blocked with funds reserved.
+2. Coordinate with the old processor or authorized payout-account custodian and ensure the old processor can no longer send this payout (including any in-flight transfer). An unavailable processor alone is not evidence of an unpaid request. The app cannot revoke external GCash access; do not confirm until external coordination is effective.
+3. Record why the processor is unavailable, the payment evidence checked, who coordinated the handoff, and how further transfers were stopped.
+4. Select **Not sent** only after verifying no successful or pending transfer. Select **Already sent** with its unique actual reference and exact net paid amount if the transfer succeeded. Never resend it.
+5. Confirm coordination and accept the audited handoff. The server checks the processor and record version displayed when the form opened. Conflicting handoffs or decisions require reloading and fresh reconciliation; an uncertain response is not permission to pay.
+
+The request remains Processing and its original processing timestamp, existing decisions, notifications, and reserved funds remain unchanged. Each handoff adds a separate append-only audit with previous and receiving Admin, time, payment status, reference and note. Repeated handoffs do not overwrite history. Both the receiving Admin's active role and no-self-review are rechecked inside the transaction.
+
+An already-sent handoff retains payment evidence on the request and blocks rejection or a different payment reference. The new processor must separately record completion for that same actual payment; only that completion consumes the reservation and writes the exact-once payout and fee ledger entries. The old processor loses completion/rejection permission. For an unsent handoff, normal manual processing remains available only to the new processor.
 
 ## Accounting and security
 

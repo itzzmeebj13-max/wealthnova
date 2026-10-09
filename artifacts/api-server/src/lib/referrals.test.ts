@@ -57,6 +57,7 @@ try {
       app.use("/api", createReferralRouter(db));
       const withdrawals: WithdrawalDatabase = {
         wallet: tx.wallet, withdrawalRequest: tx.withdrawalRequest, withdrawalAudit: tx.withdrawalAudit,
+        withdrawalHandoff: tx.withdrawalHandoff,
         withdrawalNotification: tx.withdrawalNotification, $transaction: fn => scoped(() => fn(tx)),
       };
       app.use("/api", createWithdrawalRouter(withdrawals));

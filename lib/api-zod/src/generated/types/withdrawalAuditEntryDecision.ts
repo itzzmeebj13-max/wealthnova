@@ -13,4 +13,5 @@ export const WithdrawalAuditEntryDecision = {
   PROCESSING: 'PROCESSING',
   COMPLETED: 'COMPLETED',
   REJECTED: 'REJECTED',
+  REASSIGNED: 'REASSIGNED',
 } as const;
