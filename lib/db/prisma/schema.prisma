@@ -47,6 +47,10 @@ model User {
   wallet    Wallet?
   investments Investment[]
   ledgerEntries LedgerEntry[]
+  depositImages DepositImage[]
+  depositRequests DepositRequest[]
+  reviewedDeposits DepositRequest[] @relation("DepositReviewer")
+  depositDecisionAudits DepositDecisionAudit[]
 
   @@index([referredBy])
 }
@@ -120,10 +124,103 @@ model LedgerEntry {
   amount            Decimal         @db.Decimal(16, 2)
   balanceAfter      Decimal         @db.Decimal(16, 2)
   createdAt         DateTime        @default(now())
+  depositRequestId  String?         @unique
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Restrict)
   investment Investment?  @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+  depositRequest DepositRequest? @relation(fields: [depositRequestId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@index([investmentId, type])
+}
+
+enum DepositImagePurpose {
+  QR
+  RECEIPT
+}
+
+enum DepositRequestStatus {
+  PENDING_VERIFICATION
+  APPROVED
+  REJECTED
+}
+
+enum DepositDecisionType {
+  APPROVED
+  REJECTED
+}
+
+model DepositImage {
+  id          String @id @default(cuid())
+  userId      String
+  purpose     DepositImagePurpose
+  objectPath  String @unique
+  contentType String
+  size        Int
+  digest      String
+  createdAt   DateTime @default(now())
+  user        User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  request     DepositRequest?
+  settings    DepositPaymentSettings[]
+
+  @@index([userId, createdAt])
+}
+
+model DepositPaymentSettings {
+  id                 String @id @default("gcash")
+  qrImageId          String?
+  accountName        String @default("")
+  accountNumber      String @default("")
+  instructions       String @default("")
+  minimumAmount      Decimal @default(1) @db.Decimal(16, 2)
+  submissionsEnabled Boolean @default(false)
+  version            Int @default(0)
+  updatedAt          DateTime @updatedAt
+  qrImage            DepositImage? @relation(fields: [qrImageId], references: [id], onDelete: Restrict)
+}
+
+model DepositRequest {
+  id                 String @id @default(cuid())
+  userId             String
+  amount             Decimal @db.Decimal(16, 2)
+  transactionReference String @unique
+  receiptImageId     String @unique
+  receiptDigest      String @unique
+  idempotencyKey     String
+  status             DepositRequestStatus @default(PENDING_VERIFICATION)
+  accountName        String
+  accountNumber      String
+  settingsVersion    Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  reviewedById       String?
+  reviewedAt         DateTime?
+  approvedAt         DateTime?
+  verifiedAmount     Decimal? @db.Decimal(16, 2)
+  rejectionReason    String?
+  user               User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  receiptImage       DepositImage @relation(fields: [receiptImageId], references: [id], onDelete: Restrict)
+  reviewedBy         User? @relation("DepositReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  decisionAudit      DepositDecisionAudit?
+  ledgerEntry        LedgerEntry?
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model DepositDecisionAudit {
+  id             String @id @default(cuid())
+  depositId      String @unique
+  adminId        String
+  decision       DepositDecisionType
+  verifiedAmount Decimal? @db.Decimal(16, 2)
+  verificationNote String?
+  amountDifferenceConfirmed Boolean @default(false)
+  rejectionReason String?
+  createdAt      DateTime @default(now())
+  deposit        DepositRequest @relation(fields: [depositId], references: [id], onDelete: Restrict)
+  admin          User @relation(fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([adminId, createdAt])
 }

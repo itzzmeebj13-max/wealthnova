@@ -20,9 +20,21 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminDepositList,
   DashboardSummary,
+  DepositApprovalInput,
   DepositAvailability,
+  DepositDecisionAudit,
+  DepositDecisionResult,
+  DepositImage,
+  DepositImageInput,
+  DepositPaymentSettings,
+  DepositPaymentSettingsInput,
+  DepositRejectionInput,
+  DepositRequest,
+  DepositRequestInput,
   ErrorResponse,
+  GetAdminDepositRequestsParams,
   HealthStatus,
   InvestmentStartInput,
   InvestmentStartResult,
@@ -952,4 +964,779 @@ export const useStartInvestment = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getStartInvestmentMutationOptions(options));
     }
+
+export const getGetDepositPaymentSettingsUrl = () => {
+
+
+
+
+  return `/api/deposits/settings`
+}
+
+export const getDepositPaymentSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<DepositPaymentSettings> => {
+
+  return customFetch<DepositPaymentSettings>(getGetDepositPaymentSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDepositPaymentSettingsQueryKey = () => {
+    return [
+    `/api/deposits/settings`
+    ] as const;
+    }
+
+
+export const getGetDepositPaymentSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getDepositPaymentSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositPaymentSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDepositPaymentSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDepositPaymentSettings>>> = ({ signal }) => getDepositPaymentSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDepositPaymentSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDepositPaymentSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getDepositPaymentSettings>>>
+export type GetDepositPaymentSettingsQueryError = ErrorType<unknown>
+
+
+
+export function useGetDepositPaymentSettings<TData = Awaited<ReturnType<typeof getDepositPaymentSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositPaymentSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDepositPaymentSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateDepositPaymentSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/deposits/settings`
+}
+
+export const updateDepositPaymentSettings = async (depositPaymentSettingsInput: DepositPaymentSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositPaymentSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DepositPaymentSettings>(getUpdateDepositPaymentSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(depositPaymentSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateDepositPaymentSettingsMutationKey = () => ['updateDepositPaymentSettings'] as const;
+
+export const getUpdateDepositPaymentSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepositPaymentSettings>>, TError,UpdateDepositPaymentSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDepositPaymentSettings>>, TError,UpdateDepositPaymentSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateDepositPaymentSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDepositPaymentSettings>>, UpdateDepositPaymentSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateDepositPaymentSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDepositPaymentSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateDepositPaymentSettings>>>
+    export type UpdateDepositPaymentSettingsMutationBody = BodyType<DepositPaymentSettingsInput>
+    export type UpdateDepositPaymentSettingsMutationError = ErrorType<void>
+    export type UpdateDepositPaymentSettingsMutationVariables = {data: BodyType<DepositPaymentSettingsInput>}
+
+    export const useUpdateDepositPaymentSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepositPaymentSettings>>, TError,UpdateDepositPaymentSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDepositPaymentSettings>>,
+        TError,
+        UpdateDepositPaymentSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateDepositPaymentSettingsMutationOptions(options));
+    }
+
+export const getUploadDepositImageUrl = () => {
+
+
+
+
+  return `/api/deposits/images`
+}
+
+export const uploadDepositImage = async (depositImageInput: DepositImageInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositImage> => {
+    const formData = new FormData();
+formData.append(`purpose`, depositImageInput.purpose);
+formData.append(`file`, depositImageInput.file);
+
+  return customFetch<DepositImage>(getUploadDepositImageUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadDepositImageMutationKey = () => ['uploadDepositImage'] as const;
+
+export const getUploadDepositImageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDepositImage>>, TError,UploadDepositImageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadDepositImage>>, TError,UploadDepositImageMutationVariables, TContext> => {
+
+const mutationKey = getUploadDepositImageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadDepositImage>>, UploadDepositImageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadDepositImage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadDepositImageMutationResult = NonNullable<Awaited<ReturnType<typeof uploadDepositImage>>>
+    export type UploadDepositImageMutationBody = BodyType<DepositImageInput>
+    export type UploadDepositImageMutationError = ErrorType<void>
+    export type UploadDepositImageMutationVariables = {data: BodyType<DepositImageInput>}
+
+    export const useUploadDepositImage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDepositImage>>, TError,UploadDepositImageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadDepositImage>>,
+        TError,
+        UploadDepositImageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadDepositImageMutationOptions(options));
+    }
+
+export const getGetDepositImageUrl = (imageId: string,) => {
+
+
+
+
+  return `/api/deposits/images/${imageId}`
+}
+
+export const getDepositImage = async (imageId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDepositImageUrl(imageId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDepositImageQueryKey = (imageId: string,) => {
+    return [
+    `/api/deposits/images/${imageId}`
+    ] as const;
+    }
+
+
+export const getGetDepositImageQueryOptions = <TData = Awaited<ReturnType<typeof getDepositImage>>, TError = ErrorType<void>>(imageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDepositImageQueryKey(imageId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDepositImage>>> = ({ signal }) => getDepositImage(imageId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: imageId !== null && imageId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDepositImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDepositImageQueryResult = NonNullable<Awaited<ReturnType<typeof getDepositImage>>>
+export type GetDepositImageQueryError = ErrorType<void>
+
+
+
+export function useGetDepositImage<TData = Awaited<ReturnType<typeof getDepositImage>>, TError = ErrorType<void>>(
+ imageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDepositImageQueryOptions(imageId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyDepositRequestsUrl = () => {
+
+
+
+
+  return `/api/deposits/requests`
+}
+
+export const getMyDepositRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<DepositRequest[]> => {
+
+  return customFetch<DepositRequest[]>(getGetMyDepositRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyDepositRequestsQueryKey = () => {
+    return [
+    `/api/deposits/requests`
+    ] as const;
+    }
+
+
+export const getGetMyDepositRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getMyDepositRequests>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDepositRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyDepositRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDepositRequests>>> = ({ signal }) => getMyDepositRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyDepositRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyDepositRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyDepositRequests>>>
+export type GetMyDepositRequestsQueryError = ErrorType<unknown>
+
+
+
+export function useGetMyDepositRequests<TData = Awaited<ReturnType<typeof getMyDepositRequests>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDepositRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyDepositRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitDepositRequestUrl = () => {
+
+
+
+
+  return `/api/deposits/requests`
+}
+
+export const submitDepositRequest = async (depositRequestInput: DepositRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DepositRequest>(getSubmitDepositRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(depositRequestInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitDepositRequestMutationKey = () => ['submitDepositRequest'] as const;
+
+export const getSubmitDepositRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitDepositRequest>>, TError,SubmitDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitDepositRequest>>, TError,SubmitDepositRequestMutationVariables, TContext> => {
+
+const mutationKey = getSubmitDepositRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitDepositRequest>>, SubmitDepositRequestMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitDepositRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitDepositRequestMutationResult = NonNullable<Awaited<ReturnType<typeof submitDepositRequest>>>
+    export type SubmitDepositRequestMutationBody = BodyType<DepositRequestInput>
+    export type SubmitDepositRequestMutationError = ErrorType<void>
+    export type SubmitDepositRequestMutationVariables = {data: BodyType<DepositRequestInput>}
+
+    export const useSubmitDepositRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitDepositRequest>>, TError,SubmitDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitDepositRequest>>,
+        TError,
+        SubmitDepositRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitDepositRequestMutationOptions(options));
+    }
+
+export const getGetAdminDepositRequestsUrl = (params?: GetAdminDepositRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/deposits/requests?${stringifiedParams}` : `/api/admin/deposits/requests`
+}
+
+/**
+ * @summary Administrator-only paginated deposit review dashboard
+ */
+export const getAdminDepositRequests = async (params?: GetAdminDepositRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminDepositList> => {
+
+  return customFetch<AdminDepositList>(getGetAdminDepositRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminDepositRequestsQueryKey = (params?: GetAdminDepositRequestsParams,) => {
+    return [
+    `/api/admin/deposits/requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminDepositRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminDepositRequests>>, TError = ErrorType<void>>(params?: GetAdminDepositRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDepositRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminDepositRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminDepositRequests>>> = ({ signal }) => getAdminDepositRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminDepositRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminDepositRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminDepositRequests>>>
+export type GetAdminDepositRequestsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Administrator-only paginated deposit review dashboard
+ */
+
+export function useGetAdminDepositRequests<TData = Awaited<ReturnType<typeof getAdminDepositRequests>>, TError = ErrorType<void>>(
+ params?: GetAdminDepositRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDepositRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminDepositRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveDepositRequestUrl = (depositId: string,) => {
+
+
+
+
+  return `/api/admin/deposits/requests/${depositId}/approve`
+}
+
+/**
+ * @summary Credit a deposit once after independent payment verification
+ */
+export const approveDepositRequest = async (depositId: string,
+    depositApprovalInput: DepositApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositDecisionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DepositDecisionResult>(getApproveDepositRequestUrl(depositId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(depositApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveDepositRequestMutationKey = () => ['approveDepositRequest'] as const;
+
+export const getApproveDepositRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveDepositRequest>>, TError,ApproveDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveDepositRequest>>, TError,ApproveDepositRequestMutationVariables, TContext> => {
+
+const mutationKey = getApproveDepositRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveDepositRequest>>, ApproveDepositRequestMutationVariables> = (props) => {
+          const {depositId,data} = props ?? {};
+
+          return  approveDepositRequest(depositId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveDepositRequestMutationResult = NonNullable<Awaited<ReturnType<typeof approveDepositRequest>>>
+    export type ApproveDepositRequestMutationBody = BodyType<DepositApprovalInput>
+    export type ApproveDepositRequestMutationError = ErrorType<void>
+    export type ApproveDepositRequestMutationVariables = {depositId: string;data: BodyType<DepositApprovalInput>}
+
+    /**
+ * @summary Credit a deposit once after independent payment verification
+ */
+export const useApproveDepositRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveDepositRequest>>, TError,ApproveDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveDepositRequest>>,
+        TError,
+        ApproveDepositRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveDepositRequestMutationOptions(options));
+    }
+
+export const getRejectDepositRequestUrl = (depositId: string,) => {
+
+
+
+
+  return `/api/admin/deposits/requests/${depositId}/reject`
+}
+
+export const rejectDepositRequest = async (depositId: string,
+    depositRejectionInput: DepositRejectionInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositDecisionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DepositDecisionResult>(getRejectDepositRequestUrl(depositId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(depositRejectionInput)
+  }
+);}
+
+
+
+
+
+export const getRejectDepositRequestMutationKey = () => ['rejectDepositRequest'] as const;
+
+export const getRejectDepositRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectDepositRequest>>, TError,RejectDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectDepositRequest>>, TError,RejectDepositRequestMutationVariables, TContext> => {
+
+const mutationKey = getRejectDepositRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectDepositRequest>>, RejectDepositRequestMutationVariables> = (props) => {
+          const {depositId,data} = props ?? {};
+
+          return  rejectDepositRequest(depositId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectDepositRequestMutationResult = NonNullable<Awaited<ReturnType<typeof rejectDepositRequest>>>
+    export type RejectDepositRequestMutationBody = BodyType<DepositRejectionInput>
+    export type RejectDepositRequestMutationError = ErrorType<void>
+    export type RejectDepositRequestMutationVariables = {depositId: string;data: BodyType<DepositRejectionInput>}
+
+    export const useRejectDepositRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectDepositRequest>>, TError,RejectDepositRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectDepositRequest>>,
+        TError,
+        RejectDepositRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectDepositRequestMutationOptions(options));
+    }
+
+export const getGetDepositDecisionAuditUrl = (depositId: string,) => {
+
+
+
+
+  return `/api/admin/deposits/requests/${depositId}/audit`
+}
+
+export const getDepositDecisionAudit = async (depositId: string, options?: Parameters<typeof customFetch>[1]): Promise<DepositDecisionAudit[]> => {
+
+  return customFetch<DepositDecisionAudit[]>(getGetDepositDecisionAuditUrl(depositId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDepositDecisionAuditQueryKey = (depositId: string,) => {
+    return [
+    `/api/admin/deposits/requests/${depositId}/audit`
+    ] as const;
+    }
+
+
+export const getGetDepositDecisionAuditQueryOptions = <TData = Awaited<ReturnType<typeof getDepositDecisionAudit>>, TError = ErrorType<void>>(depositId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositDecisionAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDepositDecisionAuditQueryKey(depositId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDepositDecisionAudit>>> = ({ signal }) => getDepositDecisionAudit(depositId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: depositId !== null && depositId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDepositDecisionAudit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDepositDecisionAuditQueryResult = NonNullable<Awaited<ReturnType<typeof getDepositDecisionAudit>>>
+export type GetDepositDecisionAuditQueryError = ErrorType<void>
+
+
+
+export function useGetDepositDecisionAudit<TData = Awaited<ReturnType<typeof getDepositDecisionAudit>>, TError = ErrorType<void>>(
+ depositId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDepositDecisionAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDepositDecisionAuditQueryOptions(depositId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

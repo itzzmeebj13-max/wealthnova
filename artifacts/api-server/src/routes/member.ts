@@ -8,6 +8,7 @@ import {
 import { prisma } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { mapInvestment, moneyString } from "../lib/investments";
+import { getPaymentSettings, mapPaymentSettings } from "../lib/deposits";
 
 const router: IRouter = Router();
 
@@ -104,11 +105,14 @@ router.get("/plans", async (_request, response) => {
   );
 });
 
-router.get("/deposits/status", (_request, response) => {
+router.get("/deposits/status", async (_request, response) => {
+  const settings = mapPaymentSettings(await getPaymentSettings());
   response.json(
     GetDepositStatusResponse.parse({
-      enabled: false,
-      message: "Deposits are unavailable until a real payment provider is configured.",
+      enabled: settings.enabled,
+      message: settings.enabled
+        ? "Manual GCash deposit requests are available. Every request requires verification; submitting does not credit your wallet."
+        : "Deposit submissions are disabled. Please do not send money.",
     }),
   );
 });

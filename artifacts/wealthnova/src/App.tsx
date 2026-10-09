@@ -33,7 +33,6 @@ import {
   useStartInvestment,
   getGetDashboardSummaryQueryKey,
   getGetPlansQueryKey,
-  useGetDepositStatus,
   useLogin,
   useLogout,
   useRegister,
@@ -47,6 +46,8 @@ import {
 } from '@workspace/api-zod';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import logoPath from '@assets/file_00000000ec5c820bb3111b380eeb2b8a_1791465952512.png';
+import { AdminDepositDashboard } from '@/components/admin-deposit-dashboard';
+import { DepositContent } from '@/components/deposit-content';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
 import { Toaster } from '@/components/ui/toaster';
@@ -176,7 +177,7 @@ function DashboardPage() {
   return <Protected active="/" title="Home"><DashboardContent /></Protected>;
 }
 
-const FUNDING_NOTE = 'Verified deposits are the only funding source. No deposit provider is configured yet, so available balances remain at zero and no plan can be funded.';
+const FUNDING_NOTE = 'Verified deposits are the only funding source. Submitted manual deposit requests do not credit funds; only verified deposits fund your wallet.';
 const ACCOUNTING_NOTE = 'Daily plan figures are informational only. They are not guaranteed and are not credited automatically. Only verified earning credits count as earnings.';
 
 function php(value: string) {
@@ -184,7 +185,7 @@ function php(value: string) {
 }
 
 function DashboardContent() {
-  const summary = useGetDashboardSummary();
+  const summary = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey(), refetchInterval: 15000 } });
   const referrals = useGetMyReferrals();
   const [, setLocation] = useLocation();
   const { data: user } = useGetCurrentUser();
@@ -223,7 +224,7 @@ function DashboardContent() {
         <section className="wn-card wn-full" data-testid="card-active-investments">
            <div className="wn-panel-head"><h2>Active investments <span data-testid="data-active-investment-count">({s.activeInvestments.length})</span></h2><Link href="/plans" className="wn-link" data-testid="link-view-plans">View plans <ChevronRight size={15} /></Link></div>
           {s.activeInvestments.length === 0 ?
-            <div className="wn-empty" data-testid="empty-investments"><div className="wn-empty-mark"><Wallet size={21} /></div><h3>No active investments</h3><p>{zeroFunds ? 'Your balance is zero and funding is not available yet, so there is nothing to start.' : 'Review plan terms to start one.'}</p></div> :
+            <div className="wn-empty" data-testid="empty-investments"><div className="wn-empty-mark"><Wallet size={21} /></div><h3>No active investments</h3><p>{zeroFunds ? 'Your verified available balance is zero. Pending deposit requests do not fund investments.' : 'Review plan terms to start one.'}</p></div> :
             <div className="wn-inv-list">
               {s.activeInvestments.map(inv => {
                 const pct = inv.duration > 0 ? Math.min(100, Math.round((inv.daysCompleted / inv.duration) * 100)) : 0;
@@ -309,7 +310,7 @@ function PlansContent() {
   };
   return <>
     {head}
-    <div className="wn-auth-warning" style={{ marginBottom: 18 }} data-testid="text-funding-limitation"><strong>Funding is not available yet.</strong> {FUNDING_NOTE}</div>
+    <div className="wn-auth-warning" style={{ marginBottom: 18 }} data-testid="text-funding-limitation"><strong>Only verified funds can be invested.</strong> {FUNDING_NOTE}</div>
     <div className="wn-summary-row" style={{ borderTop: 0, marginBottom: 6 }}><span>Your available balance</span><strong data-testid="data-plans-balance">{balance ? php(balance) : '—'}</strong></div>
     {notice && <div className={`wn-feedback${notice.kind === 'error' ? ' error' : ''}`} role={notice.kind === 'error' ? 'alert' : 'status'} data-testid={notice.kind === 'error' ? 'error-start-investment' : 'status-start-investment'}>{notice.text}</div>}
     {plans.data.length === 0 ? <div className="wn-card" data-testid="empty-plans"><div className="wn-empty"><div className="wn-empty-mark"><HandCoins size={21} /></div><h3>No plans are configured yet</h3><p>There aren’t any plans available to display right now.</p></div></div> :
@@ -331,7 +332,7 @@ function PlansContent() {
               </div>
             </div> : <>
               <button className="wn-button" style={{ marginTop: 16 }} onClick={() => { setNotice(null); setConfirming(plan.id); }} disabled={!available || !funded || start.isPending} data-testid={`button-start-investment-${plan.id}`}>Start Investment</button>
-              {(!available || !funded) && <p className="wn-helper" style={{ marginTop: 10 }} data-testid={`text-start-disabled-${plan.id}`}>{!available ? 'This plan is currently unavailable.' : 'Your verified available balance does not cover this principal. Funding is not available yet.'}</p>}
+              {(!available || !funded) && <p className="wn-helper" style={{ marginTop: 10 }} data-testid={`text-start-disabled-${plan.id}`}>{!available ? 'This plan is currently unavailable.' : 'Your verified available balance does not cover this principal. Pending deposit requests do not credit your balance.'}</p>}
             </>}
           </article>;
         })}
@@ -344,28 +345,8 @@ function DepositPage() {
   return <Protected active="/deposit" title="Deposit"><DepositContent /></Protected>;
 }
 
-function DepositContent() {
-  const availability = useGetDepositStatus();
-  if (availability.isLoading) return <><PageHead eyebrow="Provider availability" title="Deposit, when it’s ready." description="We’ll show the real payment-provider status here. No payment is accepted or confirmed on this page." /><div className="wn-loading" data-testid="loading-deposit"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
-  if (availability.isError) return <><PageHead eyebrow="Provider availability" title="Deposit, when it’s ready." description="We’ll show the real payment-provider status here. No payment is accepted or confirmed on this page." /><QueryError message={errorMessage(availability.error, 'Provider availability is temporarily unavailable.')} onRetry={() => void availability.refetch()} testId="error-deposit" /></>;
-  if (!availability.data) return <><PageHead eyebrow="Provider availability" title="Deposit, when it’s ready." description="We’ll show the real payment-provider status here. No payment is accepted or confirmed on this page." /><div className="wn-loading" data-testid="loading-deposit"><div className="wn-skeleton" /></div></>;
-  return <>
-    <PageHead eyebrow="Provider availability" title="Deposit, when it’s ready." description="We’ll show the real payment-provider status here. No payment is accepted or confirmed on this page." />
-        <div className="wn-card wn-fade" style={{ maxWidth: 790 }} data-testid="panel-deposit-status">
-          <div className="wn-panel-head"><h2>Current provider status</h2><CreditCard size={20} color="#547762" /></div>
-          <div className={`wn-callout`} style={{ background: availability.data.enabled ? '#e7efe7' : '#f0eadc' }}>
-            <div className="wn-callout-icon"><Activity size={18} /></div>
-            <div>
-              <strong data-testid="status-deposit-provider">{availability.data.enabled ? 'Provider available' : 'Provider unavailable'}</strong>
-              <p data-testid="data-deposit-message">{availability.data.message}</p>
-            </div>
-          </div>
-          <div className="wn-summary-row" style={{ marginTop: 22 }}>
-            <span>Deposit actions</span><strong data-testid="status-deposit-action">{availability.data.enabled ? 'Not available in this portal' : 'Unavailable'}</strong>
-          </div>
-          <p className="wn-helper" style={{ marginTop: 14 }}>This status is informational only. No payment has been started, received, or confirmed.</p>
-        </div>
-  </>;
+function AdminDepositsPage() {
+  return <Protected active="/deposit" title="Review deposits"><AdminDepositDashboard /></Protected>;
 }
 
 function InvitePage() {
@@ -638,6 +619,7 @@ function Router() {
         <Route path="/" component={DashboardPage} />
         <Route path="/plans" component={PlansPage} />
         <Route path="/deposit" component={DepositPage} />
+        <Route path="/admin/deposits" component={AdminDepositsPage} />
         <Route path="/invite" component={InvitePage} />
         <Route path="/account" component={AccountPage} />
         <Route path="/login" component={LoginPage} />

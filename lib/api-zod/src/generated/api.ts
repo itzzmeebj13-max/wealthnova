@@ -241,3 +241,297 @@ export const StartInvestmentResponse = zod.object({
 })
 
 
+export const GetDepositPaymentSettingsResponse = zod.object({
+  "configured": zod.boolean(),
+  "enabled": zod.boolean(),
+  "submissionsEnabled": zod.boolean(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "instructions": zod.string(),
+  "minimumAmount": zod.string(),
+  "qrImageId": zod.string().nullable(),
+  "qrImageUrl": zod.string().nullable(),
+  "version": zod.number().int()
+})
+
+
+export const updateDepositPaymentSettingsBodyAccountNameMax = 120;
+
+export const updateDepositPaymentSettingsBodyAccountNumberMax = 32;
+
+export const updateDepositPaymentSettingsBodyInstructionsMax = 3000;
+
+export const updateDepositPaymentSettingsBodyMinimumAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const updateDepositPaymentSettingsBodyQrImageIdMax = 100;
+
+export const updateDepositPaymentSettingsBodyExpectedVersionMin = 0;
+
+
+
+export const UpdateDepositPaymentSettingsBody = zod.object({
+  "accountName": zod.string().max(updateDepositPaymentSettingsBodyAccountNameMax),
+  "accountNumber": zod.string().max(updateDepositPaymentSettingsBodyAccountNumberMax),
+  "instructions": zod.string().max(updateDepositPaymentSettingsBodyInstructionsMax),
+  "minimumAmount": zod.string().regex(updateDepositPaymentSettingsBodyMinimumAmountRegExp),
+  "qrImageId": zod.string().max(updateDepositPaymentSettingsBodyQrImageIdMax).nullable(),
+  "submissionsEnabled": zod.boolean(),
+  "expectedVersion": zod.number().int().min(updateDepositPaymentSettingsBodyExpectedVersionMin)
+})
+
+export const UpdateDepositPaymentSettingsResponse = zod.object({
+  "configured": zod.boolean(),
+  "enabled": zod.boolean(),
+  "submissionsEnabled": zod.boolean(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "instructions": zod.string(),
+  "minimumAmount": zod.string(),
+  "qrImageId": zod.string().nullable(),
+  "qrImageUrl": zod.string().nullable(),
+  "version": zod.number().int()
+})
+
+
+export const UploadDepositImageBody = zod.object({
+  "purpose": zod.enum(['QR', 'RECEIPT']),
+  "file": zod.instanceof(Blob)
+})
+
+export const UploadDepositImageResponse = zod.object({
+  "id": zod.string(),
+  "url": zod.string(),
+  "purpose": zod.enum(['QR', 'RECEIPT']),
+  "size": zod.number().int()
+})
+
+
+export const GetDepositImageParams = zod.object({
+  "imageId": zod.coerce.string()
+})
+
+export const GetDepositImageResponse = zod.unknown()
+
+
+export const GetMyDepositRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptUrl": zod.string(),
+  "status": zod.enum(['PENDING_VERIFICATION', 'APPROVED', 'REJECTED']),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "rejectionReason": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "verifiedAmount": zod.string().nullable()
+})
+export const GetMyDepositRequestsResponse = zod.array(GetMyDepositRequestsResponseItem)
+
+
+export const submitDepositRequestBodyAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const submitDepositRequestBodyTransactionReferenceMin = 6;
+export const submitDepositRequestBodyTransactionReferenceMax = 64;
+
+export const submitDepositRequestBodyReceiptImageIdMax = 100;
+
+export const submitDepositRequestBodyIdempotencyKeyMin = 16;
+export const submitDepositRequestBodyIdempotencyKeyMax = 128;
+
+export const submitDepositRequestBodySettingsVersionMin = 0;
+
+
+
+export const SubmitDepositRequestBody = zod.object({
+  "amount": zod.string().regex(submitDepositRequestBodyAmountRegExp),
+  "transactionReference": zod.string().min(submitDepositRequestBodyTransactionReferenceMin).max(submitDepositRequestBodyTransactionReferenceMax),
+  "receiptImageId": zod.string().min(1).max(submitDepositRequestBodyReceiptImageIdMax),
+  "idempotencyKey": zod.string().min(submitDepositRequestBodyIdempotencyKeyMin).max(submitDepositRequestBodyIdempotencyKeyMax),
+  "settingsVersion": zod.number().int().min(submitDepositRequestBodySettingsVersionMin)
+})
+
+export const SubmitDepositRequestResponse = zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptUrl": zod.string(),
+  "status": zod.enum(['PENDING_VERIFICATION', 'APPROVED', 'REJECTED']),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "rejectionReason": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "verifiedAmount": zod.string().nullable()
+})
+
+
+/**
+ * @summary Administrator-only paginated deposit review dashboard
+ */
+export const getAdminDepositRequestsQueryStatusDefault = `PENDING_VERIFICATION`;
+export const getAdminDepositRequestsQueryPageDefault = 1;
+export const getAdminDepositRequestsQueryPageMax = 100000;
+
+export const getAdminDepositRequestsQueryPageSizeDefault = 20;
+export const getAdminDepositRequestsQueryPageSizeMax = 50;
+
+
+
+export const GetAdminDepositRequestsQueryParams = zod.object({
+  "status": zod.enum(['ALL', 'PENDING_VERIFICATION', 'APPROVED', 'REJECTED']).default(getAdminDepositRequestsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).max(getAdminDepositRequestsQueryPageMax).default(getAdminDepositRequestsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getAdminDepositRequestsQueryPageSizeMax).default(getAdminDepositRequestsQueryPageSizeDefault)
+})
+
+export const GetAdminDepositRequestsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptUrl": zod.string(),
+  "status": zod.enum(['PENDING_VERIFICATION', 'APPROVED', 'REJECTED']),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "rejectionReason": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "verifiedAmount": zod.string().nullable()
+}).and(zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}),
+  "reviewer": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}).nullable()
+}))),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+/**
+ * @summary Credit a deposit once after independent payment verification
+ */
+export const approveDepositRequestPathDepositIdMax = 100;
+
+
+
+export const ApproveDepositRequestParams = zod.object({
+  "depositId": zod.coerce.string().min(1).max(approveDepositRequestPathDepositIdMax)
+})
+
+export const approveDepositRequestBodyVerifiedAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const approveDepositRequestBodyVerificationNoteMin = 10;
+export const approveDepositRequestBodyVerificationNoteMax = 1000;
+
+
+
+export const ApproveDepositRequestBody = zod.object({
+  "verifiedAmount": zod.string().regex(approveDepositRequestBodyVerifiedAmountRegExp),
+  "confirmedPaymentReceived": zod.boolean(),
+  "confirmedAmountDifference": zod.boolean(),
+  "verificationNote": zod.string().min(approveDepositRequestBodyVerificationNoteMin).max(approveDepositRequestBodyVerificationNoteMax)
+})
+
+export const ApproveDepositRequestResponse = zod.object({
+  "deposit": zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptUrl": zod.string(),
+  "status": zod.enum(['PENDING_VERIFICATION', 'APPROVED', 'REJECTED']),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "rejectionReason": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "verifiedAmount": zod.string().nullable()
+}).and(zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}),
+  "reviewer": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}).nullable()
+})),
+  "alreadyProcessed": zod.boolean()
+})
+
+
+export const rejectDepositRequestPathDepositIdMax = 100;
+
+
+
+export const RejectDepositRequestParams = zod.object({
+  "depositId": zod.coerce.string().min(1).max(rejectDepositRequestPathDepositIdMax)
+})
+
+export const rejectDepositRequestBodyReasonMin = 5;
+export const rejectDepositRequestBodyReasonMax = 1000;
+
+
+
+export const RejectDepositRequestBody = zod.object({
+  "reason": zod.string().min(rejectDepositRequestBodyReasonMin).max(rejectDepositRequestBodyReasonMax)
+})
+
+export const RejectDepositRequestResponse = zod.object({
+  "deposit": zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptUrl": zod.string(),
+  "status": zod.enum(['PENDING_VERIFICATION', 'APPROVED', 'REJECTED']),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "rejectionReason": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "verifiedAmount": zod.string().nullable()
+}).and(zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}),
+  "reviewer": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}).nullable()
+})),
+  "alreadyProcessed": zod.boolean()
+})
+
+
+export const getDepositDecisionAuditPathDepositIdMax = 100;
+
+
+
+export const GetDepositDecisionAuditParams = zod.object({
+  "depositId": zod.coerce.string().min(1).max(getDepositDecisionAuditPathDepositIdMax)
+})
+
+export const GetDepositDecisionAuditResponseItem = zod.object({
+  "id": zod.string(),
+  "admin": zod.object({
+  "id": zod.string(),
+  "mobileNumber": zod.string()
+}),
+  "decision": zod.enum(['APPROVED', 'REJECTED']),
+  "verifiedAmount": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "amountDifferenceConfirmed": zod.boolean(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const GetDepositDecisionAuditResponse = zod.array(GetDepositDecisionAuditResponseItem)
+
+

@@ -249,8 +249,323 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /deposits/settings:
+    get:
+      operationId: getDepositPaymentSettings
+      tags: [deposits]
+      responses:
+        "200":
+          description: Manual payment details and submission availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositPaymentSettings" }
+  /admin/deposits/settings:
+    put:
+      operationId: updateDepositPaymentSettings
+      tags: [deposits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DepositPaymentSettingsInput" }
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositPaymentSettings" }
+        "403":
+          description: Administrator access required
+        "409":
+          description: Settings changed; reload before saving
+  /deposits/images:
+    post:
+      operationId: uploadDepositImage
+      tags: [deposits]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/DepositImageInput" }
+      responses:
+        "201":
+          description: Validated private image
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositImage" }
+        "400":
+          description: Invalid image
+        "413":
+          description: Image exceeds 5 MB
+  /deposits/images/{imageId}:
+    get:
+      operationId: getDepositImage
+      tags: [deposits]
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authorized image bytes
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "404":
+          description: Image missing or not accessible
+  /deposits/requests:
+    get:
+      operationId: getMyDepositRequests
+      tags: [deposits]
+      responses:
+        "200":
+          description: Current user's submitted requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DepositRequest" }
+    post:
+      operationId: submitDepositRequest
+      tags: [deposits]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DepositRequestInput" }
+      responses:
+        "201":
+          description: Saved pending verification; wallet not credited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositRequest" }
+        "200":
+          description: Idempotent replay of saved request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositRequest" }
+        "409":
+          description: Duplicate reference or receipt, or settings changed
+  /admin/deposits/requests:
+    get:
+      operationId: getAdminDepositRequests
+      tags: [deposits]
+      summary: Administrator-only paginated deposit review dashboard
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [ALL, PENDING_VERIFICATION, APPROVED, REJECTED], default: PENDING_VERIFICATION }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100000, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: Authorized deposit review queue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminDepositList" }
+        "403":
+          description: Administrator access required
+  /admin/deposits/requests/{depositId}/approve:
+    post:
+      operationId: approveDepositRequest
+      tags: [deposits]
+      summary: Credit a deposit once after independent payment verification
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DepositApprovalInput" }
+      responses:
+        "200":
+          description: Approved or already approved; no duplicate credit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositDecisionResult" }
+        "400":
+          description: Payment confirmation, positive verified amount, or discrepancy acknowledgment missing
+        "403":
+          description: Not an administrator or attempting self-approval
+        "409":
+          description: Rejected deposit or concurrent decision conflict
+  /admin/deposits/requests/{depositId}/reject:
+    post:
+      operationId: rejectDepositRequest
+      tags: [deposits]
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DepositRejectionInput" }
+      responses:
+        "200":
+          description: Rejected with reason, without wallet credit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositDecisionResult" }
+        "403":
+          description: Administrator access required
+        "409":
+          description: Already approved or conflicting decision
+  /admin/deposits/requests/{depositId}/audit:
+    get:
+      operationId: getDepositDecisionAudit
+      tags: [deposits]
+      parameters:
+        - name: depositId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        "200":
+          description: Immutable decision audit entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DepositDecisionAudit" }
+        "403":
+          description: Administrator access required
 components:
   schemas:
+    DepositPaymentSettings:
+      type: object
+      required: [configured, enabled, submissionsEnabled, accountName, accountNumber, instructions, minimumAmount, qrImageId, qrImageUrl, version]
+      properties:
+        configured: { type: boolean }
+        enabled: { type: boolean }
+        submissionsEnabled: { type: boolean }
+        accountName: { type: string }
+        accountNumber: { type: string }
+        instructions: { type: string }
+        minimumAmount: { type: string }
+        qrImageId: { type: [string, "null"] }
+        qrImageUrl: { type: [string, "null"] }
+        version: { type: integer }
+    DepositPaymentSettingsInput:
+      type: object
+      required: [accountName, accountNumber, instructions, minimumAmount, qrImageId, submissionsEnabled, expectedVersion]
+      properties:
+        accountName: { type: string, maxLength: 120 }
+        accountNumber: { type: string, maxLength: 32 }
+        instructions: { type: string, maxLength: 3000 }
+        minimumAmount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        qrImageId: { type: [string, "null"], maxLength: 100 }
+        submissionsEnabled: { type: boolean }
+        expectedVersion: { type: integer, minimum: 0 }
+    DepositImageInput:
+      type: object
+      required: [purpose, file]
+      properties:
+        purpose: { type: string, enum: [QR, RECEIPT] }
+        file: { type: string, format: binary }
+    DepositImage:
+      type: object
+      required: [id, url, purpose, size]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        purpose: { type: string, enum: [QR, RECEIPT] }
+        size: { type: integer }
+    DepositRequestInput:
+      type: object
+      required: [amount, transactionReference, receiptImageId, idempotencyKey, settingsVersion]
+      properties:
+        amount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        transactionReference: { type: string, minLength: 6, maxLength: 64 }
+        receiptImageId: { type: string, minLength: 1, maxLength: 100 }
+        idempotencyKey: { type: string, minLength: 16, maxLength: 128 }
+        settingsVersion: { type: integer, minimum: 0 }
+    DepositRequest:
+      type: object
+      required: [id, amount, transactionReference, receiptUrl, status, accountName, accountNumber, createdAt, rejectionReason, reviewedAt, approvedAt, verifiedAmount]
+      properties:
+        id: { type: string }
+        amount: { type: string }
+        transactionReference: { type: string }
+        receiptUrl: { type: string }
+        status: { type: string, enum: [PENDING_VERIFICATION, APPROVED, REJECTED] }
+        accountName: { type: string }
+        accountNumber: { type: string }
+        createdAt: { type: string, format: date-time }
+        rejectionReason: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        approvedAt: { type: [string, "null"], format: date-time }
+        verifiedAmount: { type: [string, "null"] }
+    DepositApprovalInput:
+      type: object
+      required: [verifiedAmount, confirmedPaymentReceived, confirmedAmountDifference, verificationNote]
+      properties:
+        verifiedAmount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        confirmedPaymentReceived: { type: boolean }
+        confirmedAmountDifference: { type: boolean }
+        verificationNote: { type: string, minLength: 10, maxLength: 1000 }
+    DepositRejectionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 1000 }
+    DepositMemberAccount:
+      type: object
+      required: [id, mobileNumber]
+      properties:
+        id: { type: string }
+        mobileNumber: { type: string }
+    AdminDeposit:
+      allOf:
+        - $ref: "#/components/schemas/DepositRequest"
+        - type: object
+          required: [user, reviewer]
+          properties:
+            user: { $ref: "#/components/schemas/DepositMemberAccount" }
+            reviewer:
+              type: [object, "null"]
+              required: [id, mobileNumber]
+              properties:
+                id: { type: string }
+                mobileNumber: { type: string }
+    AdminDepositList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminDeposit" }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    DepositDecisionResult:
+      type: object
+      required: [deposit, alreadyProcessed]
+      properties:
+        deposit: { $ref: "#/components/schemas/AdminDeposit" }
+        alreadyProcessed: { type: boolean }
+    DepositDecisionAudit:
+      type: object
+      required: [id, admin, decision, verifiedAmount, verificationNote, amountDifferenceConfirmed, rejectionReason, createdAt]
+      properties:
+        id: { type: string }
+        admin: { $ref: "#/components/schemas/DepositMemberAccount" }
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        verifiedAmount: { type: [string, "null"] }
+        verificationNote: { type: [string, "null"] }
+        amountDifferenceConfirmed: { type: boolean }
+        rejectionReason: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
     HealthStatus:
       type: object
       properties:

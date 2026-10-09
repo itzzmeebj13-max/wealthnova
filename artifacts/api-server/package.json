@@ -8,22 +8,28 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:investments": "esbuild src/lib/investments.test.ts --bundle --platform=node --format=esm --external:@prisma/client --outfile=.cache/investments.test.mjs && node .cache/investments.test.mjs"
+    "test:investments": "esbuild src/lib/investments.test.ts --bundle --platform=node --format=esm --external:@prisma/client --outfile=.cache/investments.test.mjs && node .cache/investments.test.mjs",
+    "test:deposits": "esbuild src/lib/deposits.test.ts --bundle --platform=node --format=esm --external:@prisma/client --external:@google-cloud/storage --external:sharp --external:multer --external:express --external:pino --external:pino-http --external:cookie-parser --external:cors --outfile=.cache/deposits.test.mjs && node .cache/deposits.test.mjs",
+    "prepare:gcash-qr": "esbuild src/scripts/prepare-gcash-qr.ts --bundle --platform=node --format=esm --packages=external --alias:@workspace/db=../../lib/db/src/index.ts --outfile=.cache/prepare-gcash-qr.mjs && node .cache/prepare-gcash-qr.mjs"
   },
   "dependencies": {
+    "@google-cloud/storage": "^8.3.0",
     "@prisma/client": "6.19.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "multer": "^2.4.0",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0"
+    "pino-http": "^10.5.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
     "@types/node": "catalog:",
     "esbuild": "0.28.2",
     "esbuild-plugin-pino": "^2.3.3",

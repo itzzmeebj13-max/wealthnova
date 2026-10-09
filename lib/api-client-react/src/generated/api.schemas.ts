@@ -5,6 +5,191 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+export interface DepositPaymentSettings {
+  configured: boolean;
+  enabled: boolean;
+  submissionsEnabled: boolean;
+  accountName: string;
+  accountNumber: string;
+  instructions: string;
+  minimumAmount: string;
+  /** @nullable */
+  qrImageId: string | null;
+  /** @nullable */
+  qrImageUrl: string | null;
+  version: number;
+}
+
+export interface DepositPaymentSettingsInput {
+  /** @maxLength 120 */
+  accountName: string;
+  /** @maxLength 32 */
+  accountNumber: string;
+  /** @maxLength 3000 */
+  instructions: string;
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  minimumAmount: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  qrImageId: string | null;
+  submissionsEnabled: boolean;
+  /** @minimum 0 */
+  expectedVersion: number;
+}
+
+export type DepositImageInputPurpose = typeof DepositImageInputPurpose[keyof typeof DepositImageInputPurpose];
+
+
+export const DepositImageInputPurpose = {
+  QR: 'QR',
+  RECEIPT: 'RECEIPT',
+} as const;
+
+export interface DepositImageInput {
+  purpose: DepositImageInputPurpose;
+  file: Blob;
+}
+
+export type DepositImagePurpose = typeof DepositImagePurpose[keyof typeof DepositImagePurpose];
+
+
+export const DepositImagePurpose = {
+  QR: 'QR',
+  RECEIPT: 'RECEIPT',
+} as const;
+
+export interface DepositImage {
+  id: string;
+  url: string;
+  purpose: DepositImagePurpose;
+  size: number;
+}
+
+export interface DepositRequestInput {
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  amount: string;
+  /**
+     * @minLength 6
+     * @maxLength 64
+     */
+  transactionReference: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  receiptImageId: string;
+  /**
+     * @minLength 16
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+  /** @minimum 0 */
+  settingsVersion: number;
+}
+
+export type DepositRequestStatus = typeof DepositRequestStatus[keyof typeof DepositRequestStatus];
+
+
+export const DepositRequestStatus = {
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface DepositRequest {
+  id: string;
+  amount: string;
+  transactionReference: string;
+  receiptUrl: string;
+  status: DepositRequestStatus;
+  accountName: string;
+  accountNumber: string;
+  createdAt: string;
+  /** @nullable */
+  rejectionReason: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  /** @nullable */
+  approvedAt: string | null;
+  /** @nullable */
+  verifiedAmount: string | null;
+}
+
+export interface DepositApprovalInput {
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  verifiedAmount: string;
+  confirmedPaymentReceived: boolean;
+  confirmedAmountDifference: boolean;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  verificationNote: string;
+}
+
+export interface DepositRejectionInput {
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export interface DepositMemberAccount {
+  id: string;
+  mobileNumber: string;
+}
+
+/**
+ * @nullable
+ */
+export type AdminDepositReviewer = {
+  id: string;
+  mobileNumber: string;
+} | null;
+
+export type AdminDeposit = DepositRequest & {
+  user: DepositMemberAccount;
+  /** @nullable */
+  reviewer: AdminDepositReviewer;
+};
+
+export interface AdminDepositList {
+  items: AdminDeposit[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface DepositDecisionResult {
+  deposit: AdminDeposit;
+  alreadyProcessed: boolean;
+}
+
+export type DepositDecisionAuditDecision = typeof DepositDecisionAuditDecision[keyof typeof DepositDecisionAuditDecision];
+
+
+export const DepositDecisionAuditDecision = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface DepositDecisionAudit {
+  id: string;
+  admin: DepositMemberAccount;
+  decision: DepositDecisionAuditDecision;
+  /** @nullable */
+  verifiedAmount: string | null;
+  /** @nullable */
+  verificationNote: string | null;
+  amountDifferenceConfirmed: boolean;
+  /** @nullable */
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -220,4 +405,28 @@ export interface DepositAvailability {
   enabled: boolean;
   message: string;
 }
+
+export type GetAdminDepositRequestsParams = {
+status?: GetAdminDepositRequestsStatus;
+/**
+ * @minimum 1
+ * @maximum 100000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+pageSize?: number;
+};
+
+export type GetAdminDepositRequestsStatus = typeof GetAdminDepositRequestsStatus[keyof typeof GetAdminDepositRequestsStatus];
+
+
+export const GetAdminDepositRequestsStatus = {
+  ALL: 'ALL',
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
 
