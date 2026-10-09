@@ -541,3 +541,259 @@ export const GetDepositDecisionAuditResponseItem = zod.object({
 export const GetDepositDecisionAuditResponse = zod.array(GetDepositDecisionAuditResponseItem)
 
 
+export const GetWithdrawalSummaryResponse = zod.object({
+  "availableBalance": zod.string(),
+  "reservedBalance": zod.string(),
+  "feePercent": zod.number(),
+  "activeWithdrawalId": zod.string().nullable(),
+  "notifications": zod.array(zod.object({
+  "id": zod.string(),
+  "withdrawalId": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+export const GetWithdrawalQuoteQueryParams = zod.object({
+  "amount": zod.coerce.string()
+})
+
+export const GetWithdrawalQuoteResponse = zod.object({
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number()
+})
+
+
+export const GetMyWithdrawalsResponseItem = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const GetMyWithdrawalsResponse = zod.array(GetMyWithdrawalsResponseItem)
+
+
+export const submitWithdrawalBodyAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const submitWithdrawalBodyAccountNameMax = 120;
+
+export const submitWithdrawalBodyAccountNumberMax = 32;
+
+
+
+export const SubmitWithdrawalBody = zod.object({
+  "amount": zod.string().regex(submitWithdrawalBodyAmountRegExp),
+  "accountName": zod.string().min(1).max(submitWithdrawalBodyAccountNameMax),
+  "accountNumber": zod.string().min(1).max(submitWithdrawalBodyAccountNumberMax),
+  "idempotencyKey": zod.string().uuid()
+})
+
+export const SubmitWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const AcknowledgeWithdrawalNotificationParams = zod.object({
+  "notificationId": zod.coerce.string()
+})
+
+export const AcknowledgeWithdrawalNotificationResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+export const getAdminWithdrawalsQueryStatusDefault = `PENDING`;
+export const getAdminWithdrawalsQueryPageDefault = 1;
+
+
+
+export const GetAdminWithdrawalsQueryParams = zod.object({
+  "status": zod.enum(['ALL', 'PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']).default(getAdminWithdrawalsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).default(getAdminWithdrawalsQueryPageDefault)
+})
+
+export const GetAdminWithdrawalsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+export const ProcessWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string()
+})
+
+export const ProcessWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const CompleteWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string()
+})
+
+export const completeWithdrawalBodyPayoutReferenceMin = 6;
+export const completeWithdrawalBodyPayoutReferenceMax = 64;
+
+export const completeWithdrawalBodyPaidAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const completeWithdrawalBodyVerificationNoteMin = 10;
+export const completeWithdrawalBodyVerificationNoteMax = 1000;
+
+
+
+export const CompleteWithdrawalBody = zod.object({
+  "payoutReference": zod.string().min(completeWithdrawalBodyPayoutReferenceMin).max(completeWithdrawalBodyPayoutReferenceMax),
+  "paidAmount": zod.string().regex(completeWithdrawalBodyPaidAmountRegExp),
+  "confirmedPayoutSent": zod.boolean(),
+  "verificationNote": zod.string().min(completeWithdrawalBodyVerificationNoteMin).max(completeWithdrawalBodyVerificationNoteMax)
+})
+
+export const CompleteWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const RejectWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string()
+})
+
+export const rejectWithdrawalBodyReasonMin = 5;
+export const rejectWithdrawalBodyReasonMax = 1000;
+
+
+
+export const RejectWithdrawalBody = zod.object({
+  "reason": zod.string().min(rejectWithdrawalBodyReasonMin).max(rejectWithdrawalBodyReasonMax),
+  "confirmedNoPayoutSent": zod.boolean()
+})
+
+export const RejectWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userMobileNumber": zod.string(),
+  "requestedAmount": zod.string(),
+  "feeAmount": zod.string(),
+  "netAmount": zod.string(),
+  "feePercent": zod.number(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED']),
+  "processingById": zod.string().nullable(),
+  "reviewedById": zod.string().nullable(),
+  "processedAt": zod.string().nullable(),
+  "completedAt": zod.string().nullable(),
+  "payoutReference": zod.string().nullable(),
+  "verificationNote": zod.string().nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+export const GetWithdrawalAuditParams = zod.object({
+  "withdrawalId": zod.coerce.string()
+})
+
+export const GetWithdrawalAuditResponseItem = zod.object({
+  "id": zod.string(),
+  "adminId": zod.string(),
+  "decision": zod.enum(['PROCESSING', 'COMPLETED', 'REJECTED']),
+  "payoutReference": zod.string().nullable(),
+  "note": zod.string(),
+  "createdAt": zod.string()
+})
+export const GetWithdrawalAuditResponse = zod.array(GetWithdrawalAuditResponseItem)
+
+

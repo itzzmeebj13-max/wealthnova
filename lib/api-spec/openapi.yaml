@@ -440,8 +440,224 @@ paths:
                 items: { $ref: "#/components/schemas/DepositDecisionAudit" }
         "403":
           description: Administrator access required
+  /withdrawals/summary:
+    get:
+      operationId: getWithdrawalSummary
+      tags: [withdrawals]
+      responses:
+        "200":
+          description: Verified spendable balance, reservations and unread updates
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WithdrawalSummary" }
+  /withdrawals/quote:
+    get:
+      operationId: getWithdrawalQuote
+      tags: [withdrawals]
+      parameters:
+        - { name: amount, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Server-calculated five percent fee rounded to the nearest cent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WithdrawalQuote" }
+  /withdrawals/requests:
+    get:
+      operationId: getMyWithdrawals
+      tags: [withdrawals]
+      responses:
+        "200":
+          description: Own withdrawal history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Withdrawal" } }
+    post:
+      operationId: submitWithdrawal
+      tags: [withdrawals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WithdrawalInput" }
+      responses:
+        "200":
+          description: Request created or safely replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Withdrawal" }
+  /withdrawals/notifications/{notificationId}/read:
+    post:
+      operationId: acknowledgeWithdrawalNotification
+      tags: [withdrawals]
+      parameters:
+        - { name: notificationId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Own notification marked read
+          content:
+            application/json:
+              schema: { type: object, required: [success], properties: { success: { type: boolean } } }
+  /admin/withdrawals:
+    get:
+      operationId: getAdminWithdrawals
+      tags: [withdrawals]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [ALL, PENDING, PROCESSING, COMPLETED, REJECTED], default: PENDING } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Admin review queue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, pageSize]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Withdrawal" } }
+                  total: { type: integer }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+  /admin/withdrawals/{withdrawalId}/process:
+    post:
+      operationId: processWithdrawal
+      tags: [withdrawals]
+      parameters:
+        - { name: withdrawalId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Claimed for processing; not a payout confirmation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Withdrawal" }
+  /admin/withdrawals/{withdrawalId}/complete:
+    post:
+      operationId: completeWithdrawal
+      tags: [withdrawals]
+      parameters:
+        - { name: withdrawalId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompleteWithdrawalInput" }
+      responses:
+        "200":
+          description: Actual verified manual payout recorded exactly once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Withdrawal" }
+  /admin/withdrawals/{withdrawalId}/reject:
+    post:
+      operationId: rejectWithdrawal
+      tags: [withdrawals]
+      parameters:
+        - { name: withdrawalId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RejectWithdrawalInput" }
+      responses:
+        "200":
+          description: Rejected with an exactly-once reserve release and user notification
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Withdrawal" }
+  /admin/withdrawals/{withdrawalId}/audit:
+    get:
+      operationId: getWithdrawalAudit
+      tags: [withdrawals]
+      parameters:
+        - { name: withdrawalId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Immutable Admin decisions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/WithdrawalAuditEntry" } }
 components:
   schemas:
+    WithdrawalQuote:
+      type: object
+      required: [requestedAmount, feeAmount, netAmount, feePercent]
+      properties:
+        requestedAmount: { type: string }
+        feeAmount: { type: string }
+        netAmount: { type: string }
+        feePercent: { type: number }
+    WithdrawalInput:
+      type: object
+      required: [amount, accountName, accountNumber, idempotencyKey]
+      properties:
+        amount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        accountName: { type: string, minLength: 1, maxLength: 120 }
+        accountNumber: { type: string, minLength: 1, maxLength: 32 }
+        idempotencyKey: { type: string, format: uuid }
+    CompleteWithdrawalInput:
+      type: object
+      required: [payoutReference, paidAmount, confirmedPayoutSent, verificationNote]
+      properties:
+        payoutReference: { type: string, minLength: 6, maxLength: 64 }
+        paidAmount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        confirmedPayoutSent: { type: boolean }
+        verificationNote: { type: string, minLength: 10, maxLength: 1000 }
+    RejectWithdrawalInput:
+      type: object
+      required: [reason, confirmedNoPayoutSent]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 1000 }
+        confirmedNoPayoutSent: { type: boolean }
+    Withdrawal:
+      type: object
+      required: [id, userId, userMobileNumber, requestedAmount, feeAmount, netAmount, feePercent, accountName, accountNumber, status, processingById, reviewedById, processedAt, completedAt, payoutReference, verificationNote, rejectionReason, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userMobileNumber: { type: string }
+        requestedAmount: { type: string }
+        feeAmount: { type: string }
+        netAmount: { type: string }
+        feePercent: { type: number }
+        accountName: { type: string }
+        accountNumber: { type: string }
+        status: { type: string, enum: [PENDING, PROCESSING, COMPLETED, REJECTED] }
+        processingById: { type: [string, "null"] }
+        reviewedById: { type: [string, "null"] }
+        processedAt: { type: [string, "null"] }
+        completedAt: { type: [string, "null"] }
+        payoutReference: { type: [string, "null"] }
+        verificationNote: { type: [string, "null"] }
+        rejectionReason: { type: [string, "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    WithdrawalNotification:
+      type: object
+      required: [id, withdrawalId, message, createdAt]
+      properties:
+        id: { type: string }
+        withdrawalId: { type: string }
+        message: { type: string }
+        createdAt: { type: string }
+    WithdrawalSummary:
+      type: object
+      required: [availableBalance, reservedBalance, feePercent, activeWithdrawalId, notifications]
+      properties:
+        availableBalance: { type: string }
+        reservedBalance: { type: string }
+        feePercent: { type: number }
+        activeWithdrawalId: { type: [string, "null"] }
+        notifications: { type: array, items: { $ref: "#/components/schemas/WithdrawalNotification" } }
+    WithdrawalAuditEntry:
+      type: object
+      required: [id, adminId, decision, payoutReference, note, createdAt]
+      properties:
+        id: { type: string }
+        adminId: { type: string }
+        decision: { type: string, enum: [PROCESSING, COMPLETED, REJECTED] }
+        payoutReference: { type: [string, "null"] }
+        note: { type: string }
+        createdAt: { type: string }
     DepositPaymentSettings:
       type: object
       required: [configured, enabled, submissionsEnabled, accountDetailsConfirmed, blockingReasons, accountName, accountNumber, instructions, minimumAmount, qrImageId, qrImageUrl, version]

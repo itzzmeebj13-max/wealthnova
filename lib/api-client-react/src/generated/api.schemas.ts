@@ -5,6 +5,128 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+export interface WithdrawalQuote {
+  requestedAmount: string;
+  feeAmount: string;
+  netAmount: string;
+  feePercent: number;
+}
+
+export interface WithdrawalInput {
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  amount: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  accountName: string;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  accountNumber: string;
+  idempotencyKey: string;
+}
+
+export interface CompleteWithdrawalInput {
+  /**
+     * @minLength 6
+     * @maxLength 64
+     */
+  payoutReference: string;
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  paidAmount: string;
+  confirmedPayoutSent: boolean;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  verificationNote: string;
+}
+
+export interface RejectWithdrawalInput {
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  reason: string;
+  confirmedNoPayoutSent: boolean;
+}
+
+export type WithdrawalStatus = typeof WithdrawalStatus[keyof typeof WithdrawalStatus];
+
+
+export const WithdrawalStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface Withdrawal {
+  id: string;
+  userId: string;
+  userMobileNumber: string;
+  requestedAmount: string;
+  feeAmount: string;
+  netAmount: string;
+  feePercent: number;
+  accountName: string;
+  accountNumber: string;
+  status: WithdrawalStatus;
+  /** @nullable */
+  processingById: string | null;
+  /** @nullable */
+  reviewedById: string | null;
+  /** @nullable */
+  processedAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  payoutReference: string | null;
+  /** @nullable */
+  verificationNote: string | null;
+  /** @nullable */
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WithdrawalNotification {
+  id: string;
+  withdrawalId: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface WithdrawalSummary {
+  availableBalance: string;
+  reservedBalance: string;
+  feePercent: number;
+  /** @nullable */
+  activeWithdrawalId: string | null;
+  notifications: WithdrawalNotification[];
+}
+
+export type WithdrawalAuditEntryDecision = typeof WithdrawalAuditEntryDecision[keyof typeof WithdrawalAuditEntryDecision];
+
+
+export const WithdrawalAuditEntryDecision = {
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface WithdrawalAuditEntry {
+  id: string;
+  adminId: string;
+  decision: WithdrawalAuditEntryDecision;
+  /** @nullable */
+  payoutReference: string | null;
+  note: string;
+  createdAt: string;
+}
+
 export interface DepositPaymentSettings {
   configured: boolean;
   enabled: boolean;
@@ -432,4 +554,38 @@ export const GetAdminDepositRequestsStatus = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 } as const;
+
+export type GetWithdrawalQuoteParams = {
+amount: string;
+};
+
+export type AcknowledgeWithdrawalNotification200 = {
+  success: boolean;
+};
+
+export type GetAdminWithdrawalsParams = {
+status?: GetAdminWithdrawalsStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type GetAdminWithdrawalsStatus = typeof GetAdminWithdrawalsStatus[keyof typeof GetAdminWithdrawalsStatus];
+
+
+export const GetAdminWithdrawalsStatus = {
+  ALL: 'ALL',
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type GetAdminWithdrawals200 = {
+  items: Withdrawal[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
 

@@ -20,7 +20,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcknowledgeWithdrawalNotification200,
   AdminDepositList,
+  CompleteWithdrawalInput,
   DashboardSummary,
   DepositApprovalInput,
   DepositAvailability,
@@ -35,6 +37,9 @@ import type {
   DepositRequestInput,
   ErrorResponse,
   GetAdminDepositRequestsParams,
+  GetAdminWithdrawals200,
+  GetAdminWithdrawalsParams,
+  GetWithdrawalQuoteParams,
   HealthStatus,
   InvestmentStartInput,
   InvestmentStartResult,
@@ -44,8 +49,14 @@ import type {
   ReferralOverview,
   ReferralValidation,
   RegistrationInput,
+  RejectWithdrawalInput,
   SessionUser,
-  SuccessResponse
+  SuccessResponse,
+  Withdrawal,
+  WithdrawalAuditEntry,
+  WithdrawalInput,
+  WithdrawalQuote,
+  WithdrawalSummary
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1728,6 +1739,759 @@ export function useGetDepositDecisionAudit<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDepositDecisionAuditQueryOptions(depositId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetWithdrawalSummaryUrl = () => {
+
+
+
+
+  return `/api/withdrawals/summary`
+}
+
+export const getWithdrawalSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<WithdrawalSummary> => {
+
+  return customFetch<WithdrawalSummary>(getGetWithdrawalSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWithdrawalSummaryQueryKey = () => {
+    return [
+    `/api/withdrawals/summary`
+    ] as const;
+    }
+
+
+export const getGetWithdrawalSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getWithdrawalSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWithdrawalSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWithdrawalSummary>>> = ({ signal }) => getWithdrawalSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWithdrawalSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getWithdrawalSummary>>>
+export type GetWithdrawalSummaryQueryError = ErrorType<unknown>
+
+
+
+export function useGetWithdrawalSummary<TData = Awaited<ReturnType<typeof getWithdrawalSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWithdrawalSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetWithdrawalQuoteUrl = (params: GetWithdrawalQuoteParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/withdrawals/quote?${stringifiedParams}` : `/api/withdrawals/quote`
+}
+
+export const getWithdrawalQuote = async (params: GetWithdrawalQuoteParams, options?: Parameters<typeof customFetch>[1]): Promise<WithdrawalQuote> => {
+
+  return customFetch<WithdrawalQuote>(getGetWithdrawalQuoteUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWithdrawalQuoteQueryKey = (params?: GetWithdrawalQuoteParams,) => {
+    return [
+    `/api/withdrawals/quote`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetWithdrawalQuoteQueryOptions = <TData = Awaited<ReturnType<typeof getWithdrawalQuote>>, TError = ErrorType<unknown>>(params: GetWithdrawalQuoteParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWithdrawalQuoteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWithdrawalQuote>>> = ({ signal }) => getWithdrawalQuote(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalQuote>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWithdrawalQuoteQueryResult = NonNullable<Awaited<ReturnType<typeof getWithdrawalQuote>>>
+export type GetWithdrawalQuoteQueryError = ErrorType<unknown>
+
+
+
+export function useGetWithdrawalQuote<TData = Awaited<ReturnType<typeof getWithdrawalQuote>>, TError = ErrorType<unknown>>(
+ params: GetWithdrawalQuoteParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWithdrawalQuoteQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyWithdrawalsUrl = () => {
+
+
+
+
+  return `/api/withdrawals/requests`
+}
+
+export const getMyWithdrawals = async ( options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal[]> => {
+
+  return customFetch<Withdrawal[]>(getGetMyWithdrawalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyWithdrawalsQueryKey = () => {
+    return [
+    `/api/withdrawals/requests`
+    ] as const;
+    }
+
+
+export const getGetMyWithdrawalsQueryOptions = <TData = Awaited<ReturnType<typeof getMyWithdrawals>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyWithdrawals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyWithdrawalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyWithdrawals>>> = ({ signal }) => getMyWithdrawals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyWithdrawals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyWithdrawalsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyWithdrawals>>>
+export type GetMyWithdrawalsQueryError = ErrorType<unknown>
+
+
+
+export function useGetMyWithdrawals<TData = Awaited<ReturnType<typeof getMyWithdrawals>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyWithdrawals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyWithdrawalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitWithdrawalUrl = () => {
+
+
+
+
+  return `/api/withdrawals/requests`
+}
+
+export const submitWithdrawal = async (withdrawalInput: WithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Withdrawal>(getSubmitWithdrawalUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(withdrawalInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitWithdrawalMutationKey = () => ['submitWithdrawal'] as const;
+
+export const getSubmitWithdrawalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitWithdrawal>>, TError,SubmitWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitWithdrawal>>, TError,SubmitWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getSubmitWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitWithdrawal>>, SubmitWithdrawalMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitWithdrawal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof submitWithdrawal>>>
+    export type SubmitWithdrawalMutationBody = BodyType<WithdrawalInput>
+    export type SubmitWithdrawalMutationError = ErrorType<unknown>
+    export type SubmitWithdrawalMutationVariables = {data: BodyType<WithdrawalInput>}
+
+    export const useSubmitWithdrawal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitWithdrawal>>, TError,SubmitWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitWithdrawal>>,
+        TError,
+        SubmitWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitWithdrawalMutationOptions(options));
+    }
+
+export const getAcknowledgeWithdrawalNotificationUrl = (notificationId: string,) => {
+
+
+
+
+  return `/api/withdrawals/notifications/${notificationId}/read`
+}
+
+export const acknowledgeWithdrawalNotification = async (notificationId: string, options?: Parameters<typeof customFetch>[1]): Promise<AcknowledgeWithdrawalNotification200> => {
+
+  return customFetch<AcknowledgeWithdrawalNotification200>(getAcknowledgeWithdrawalNotificationUrl(notificationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcknowledgeWithdrawalNotificationMutationKey = () => ['acknowledgeWithdrawalNotification'] as const;
+
+export const getAcknowledgeWithdrawalNotificationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>, TError,AcknowledgeWithdrawalNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>, TError,AcknowledgeWithdrawalNotificationMutationVariables, TContext> => {
+
+const mutationKey = getAcknowledgeWithdrawalNotificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>, AcknowledgeWithdrawalNotificationMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  acknowledgeWithdrawalNotification(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcknowledgeWithdrawalNotificationMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>>
+
+    export type AcknowledgeWithdrawalNotificationMutationError = ErrorType<unknown>
+    export type AcknowledgeWithdrawalNotificationMutationVariables = {notificationId: string}
+
+    export const useAcknowledgeWithdrawalNotification = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>, TError,AcknowledgeWithdrawalNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acknowledgeWithdrawalNotification>>,
+        TError,
+        AcknowledgeWithdrawalNotificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcknowledgeWithdrawalNotificationMutationOptions(options));
+    }
+
+export const getGetAdminWithdrawalsUrl = (params?: GetAdminWithdrawalsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/withdrawals?${stringifiedParams}` : `/api/admin/withdrawals`
+}
+
+export const getAdminWithdrawals = async (params?: GetAdminWithdrawalsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetAdminWithdrawals200> => {
+
+  return customFetch<GetAdminWithdrawals200>(getGetAdminWithdrawalsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminWithdrawalsQueryKey = (params?: GetAdminWithdrawalsParams,) => {
+    return [
+    `/api/admin/withdrawals`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminWithdrawalsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminWithdrawals>>, TError = ErrorType<unknown>>(params?: GetAdminWithdrawalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminWithdrawals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminWithdrawalsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminWithdrawals>>> = ({ signal }) => getAdminWithdrawals(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminWithdrawals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminWithdrawalsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminWithdrawals>>>
+export type GetAdminWithdrawalsQueryError = ErrorType<unknown>
+
+
+
+export function useGetAdminWithdrawals<TData = Awaited<ReturnType<typeof getAdminWithdrawals>>, TError = ErrorType<unknown>>(
+ params?: GetAdminWithdrawalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminWithdrawals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminWithdrawalsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getProcessWithdrawalUrl = (withdrawalId: string,) => {
+
+
+
+
+  return `/api/admin/withdrawals/${withdrawalId}/process`
+}
+
+export const processWithdrawal = async (withdrawalId: string, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+  return customFetch<Withdrawal>(getProcessWithdrawalUrl(withdrawalId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getProcessWithdrawalMutationKey = () => ['processWithdrawal'] as const;
+
+export const getProcessWithdrawalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processWithdrawal>>, TError,ProcessWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof processWithdrawal>>, TError,ProcessWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getProcessWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof processWithdrawal>>, ProcessWithdrawalMutationVariables> = (props) => {
+          const {withdrawalId} = props ?? {};
+
+          return  processWithdrawal(withdrawalId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ProcessWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof processWithdrawal>>>
+
+    export type ProcessWithdrawalMutationError = ErrorType<unknown>
+    export type ProcessWithdrawalMutationVariables = {withdrawalId: string}
+
+    export const useProcessWithdrawal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof processWithdrawal>>, TError,ProcessWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof processWithdrawal>>,
+        TError,
+        ProcessWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getProcessWithdrawalMutationOptions(options));
+    }
+
+export const getCompleteWithdrawalUrl = (withdrawalId: string,) => {
+
+
+
+
+  return `/api/admin/withdrawals/${withdrawalId}/complete`
+}
+
+export const completeWithdrawal = async (withdrawalId: string,
+    completeWithdrawalInput: CompleteWithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Withdrawal>(getCompleteWithdrawalUrl(withdrawalId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(completeWithdrawalInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteWithdrawalMutationKey = () => ['completeWithdrawal'] as const;
+
+export const getCompleteWithdrawalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeWithdrawal>>, TError,CompleteWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeWithdrawal>>, TError,CompleteWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getCompleteWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeWithdrawal>>, CompleteWithdrawalMutationVariables> = (props) => {
+          const {withdrawalId,data} = props ?? {};
+
+          return  completeWithdrawal(withdrawalId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof completeWithdrawal>>>
+    export type CompleteWithdrawalMutationBody = BodyType<CompleteWithdrawalInput>
+    export type CompleteWithdrawalMutationError = ErrorType<unknown>
+    export type CompleteWithdrawalMutationVariables = {withdrawalId: string;data: BodyType<CompleteWithdrawalInput>}
+
+    export const useCompleteWithdrawal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeWithdrawal>>, TError,CompleteWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeWithdrawal>>,
+        TError,
+        CompleteWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteWithdrawalMutationOptions(options));
+    }
+
+export const getRejectWithdrawalUrl = (withdrawalId: string,) => {
+
+
+
+
+  return `/api/admin/withdrawals/${withdrawalId}/reject`
+}
+
+export const rejectWithdrawal = async (withdrawalId: string,
+    rejectWithdrawalInput: RejectWithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Withdrawal>(getRejectWithdrawalUrl(withdrawalId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectWithdrawalInput)
+  }
+);}
+
+
+
+
+
+export const getRejectWithdrawalMutationKey = () => ['rejectWithdrawal'] as const;
+
+export const getRejectWithdrawalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectWithdrawal>>, TError,RejectWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectWithdrawal>>, TError,RejectWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getRejectWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectWithdrawal>>, RejectWithdrawalMutationVariables> = (props) => {
+          const {withdrawalId,data} = props ?? {};
+
+          return  rejectWithdrawal(withdrawalId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof rejectWithdrawal>>>
+    export type RejectWithdrawalMutationBody = BodyType<RejectWithdrawalInput>
+    export type RejectWithdrawalMutationError = ErrorType<unknown>
+    export type RejectWithdrawalMutationVariables = {withdrawalId: string;data: BodyType<RejectWithdrawalInput>}
+
+    export const useRejectWithdrawal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectWithdrawal>>, TError,RejectWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectWithdrawal>>,
+        TError,
+        RejectWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectWithdrawalMutationOptions(options));
+    }
+
+export const getGetWithdrawalAuditUrl = (withdrawalId: string,) => {
+
+
+
+
+  return `/api/admin/withdrawals/${withdrawalId}/audit`
+}
+
+export const getWithdrawalAudit = async (withdrawalId: string, options?: Parameters<typeof customFetch>[1]): Promise<WithdrawalAuditEntry[]> => {
+
+  return customFetch<WithdrawalAuditEntry[]>(getGetWithdrawalAuditUrl(withdrawalId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWithdrawalAuditQueryKey = (withdrawalId: string,) => {
+    return [
+    `/api/admin/withdrawals/${withdrawalId}/audit`
+    ] as const;
+    }
+
+
+export const getGetWithdrawalAuditQueryOptions = <TData = Awaited<ReturnType<typeof getWithdrawalAudit>>, TError = ErrorType<unknown>>(withdrawalId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWithdrawalAuditQueryKey(withdrawalId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWithdrawalAudit>>> = ({ signal }) => getWithdrawalAudit(withdrawalId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: withdrawalId !== null && withdrawalId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalAudit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWithdrawalAuditQueryResult = NonNullable<Awaited<ReturnType<typeof getWithdrawalAudit>>>
+export type GetWithdrawalAuditQueryError = ErrorType<unknown>
+
+
+
+export function useGetWithdrawalAudit<TData = Awaited<ReturnType<typeof getWithdrawalAudit>>, TError = ErrorType<unknown>>(
+ withdrawalId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWithdrawalAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWithdrawalAuditQueryOptions(withdrawalId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -1,1 +1,2 @@
 - [Deposit availability display](deposit-availability-display.md) — User wants unavailable-deposit warning blocks removed; keep availability in the disabled submit button and preserve security gates.
+- [Manual payout ownership](manual-payout-ownership.md) — Manual GCash payouts need one outstanding withdrawal per member and one assigned processor; reassignment requires bank reconciliation.

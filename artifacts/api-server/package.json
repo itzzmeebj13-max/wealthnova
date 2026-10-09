@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:investments": "esbuild src/lib/investments.test.ts --bundle --platform=node --format=esm --external:@prisma/client --outfile=.cache/investments.test.mjs && node .cache/investments.test.mjs",
+    "test:withdrawals": "esbuild src/lib/withdrawals.test.ts --bundle --platform=node --format=esm --external:@prisma/client --external:@google-cloud/storage --external:sharp --external:multer --external:express --external:pino --external:pino-http --external:cookie-parser --external:cors --outfile=.cache/withdrawals.test.mjs && node .cache/withdrawals.test.mjs",
     "test:deposits": "esbuild src/lib/deposits.test.ts --bundle --platform=node --format=esm --external:@prisma/client --external:@google-cloud/storage --external:sharp --external:multer --external:express --external:pino --external:pino-http --external:cookie-parser --external:cors --outfile=.cache/deposits.test.mjs && node .cache/deposits.test.mjs",
     "prepare:gcash-qr": "esbuild src/scripts/prepare-gcash-qr.ts --bundle --platform=node --format=esm --packages=external --alias:@workspace/db=../../lib/db/src/index.ts --outfile=.cache/prepare-gcash-qr.mjs && node .cache/prepare-gcash-qr.mjs"
   },

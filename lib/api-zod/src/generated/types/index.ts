@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './acknowledgeWithdrawalNotification200';
 export * from './activeInvestment';
 export * from './activeInvestmentStatus';
 export * from './adminDeposit';
 export * from './adminDepositList';
 export * from './adminDepositReviewer';
+export * from './completeWithdrawalInput';
 export * from './dashboardSummary';
 export * from './dashboardSummaryRole';
 export * from './dashboardSummaryStatus';
@@ -33,6 +35,10 @@ export * from './depositRequestStatus';
 export * from './errorResponse';
 export * from './getAdminDepositRequestsParams';
 export * from './getAdminDepositRequestsStatus';
+export * from './getAdminWithdrawals200';
+export * from './getAdminWithdrawalsParams';
+export * from './getAdminWithdrawalsStatus';
+export * from './getWithdrawalQuoteParams';
 export * from './healthStatus';
 export * from './investmentStartInput';
 export * from './investmentStartResult';
@@ -43,7 +49,16 @@ export * from './referralCodeInput';
 export * from './referralOverview';
 export * from './referralValidation';
 export * from './registrationInput';
+export * from './rejectWithdrawalInput';
 export * from './sessionUser';
 export * from './sessionUserRole';
 export * from './sessionUserStatus';
 export * from './successResponse';
+export * from './withdrawal';
+export * from './withdrawalAuditEntry';
+export * from './withdrawalAuditEntryDecision';
+export * from './withdrawalInput';
+export * from './withdrawalNotification';
+export * from './withdrawalQuote';
+export * from './withdrawalStatus';
+export * from './withdrawalSummary';

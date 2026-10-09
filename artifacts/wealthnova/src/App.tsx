@@ -47,6 +47,8 @@ import {
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import logoPath from '@assets/file_00000000ec5c820bb3111b380eeb2b8a_1791465952512.png';
 import { AdminDepositDashboard } from '@/components/admin-deposit-dashboard';
+import { AdminWithdrawalDashboard } from '@/components/admin-withdrawal-dashboard';
+import { WithdrawalAccountLink, WithdrawalContent } from '@/components/withdrawal-content';
 import { DepositContent } from '@/components/deposit-content';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
@@ -349,6 +351,14 @@ function AdminDepositsPage() {
   return <Protected active="/deposit" title="Review deposits"><AdminDepositDashboard /></Protected>;
 }
 
+function WithdrawalPage() {
+  return <Protected active="/account" title="Withdraw"><PageHead eyebrow="Manual GCash payout" title="Withdraw to GCash." description="Requests are reviewed and paid manually by an administrator. A 5% fee applies, rounded to the nearest cent." /><WithdrawalContent /></Protected>;
+}
+
+function AdminWithdrawalsPage() {
+  return <Protected active="/account" title="Review withdrawals"><AdminWithdrawalDashboard /></Protected>;
+}
+
 function InvitePage() {
   return <Protected active="/invite" title="Invite"><InviteContent /></Protected>;
 }
@@ -435,6 +445,8 @@ function AccountContent() {
               {logout.isPending ? <LoaderCircle className="animate-spin" size={16} /> : <LogOut size={16} />}Sign out
             </button>
           </section>
+          <WithdrawalAccountLink />
+          {user.role === 'ADMIN' && <section className="wn-card wn-full" data-testid="panel-admin-withdrawals"><Link href="/admin/withdrawals" className="wn-link" data-testid="link-admin-withdrawals">Review withdrawals</Link></section>}
           <section className="wn-card wn-narrow" data-testid="panel-account-security">
             <div className="wn-panel-head"><h2>Account security</h2><LockKeyhole size={20} color="#547762" /></div>
             <div className="wn-callout"><div className="wn-callout-icon"><KeyRound size={18} /></div><div><strong>Private by design</strong><p>Your member area uses your signed-in session. Sign out when you’re finished on a shared device.</p></div></div>
@@ -620,6 +632,8 @@ function Router() {
         <Route path="/plans" component={PlansPage} />
         <Route path="/deposit" component={DepositPage} />
         <Route path="/admin/deposits" component={AdminDepositsPage} />
+        <Route path="/withdrawal" component={WithdrawalPage} />
+        <Route path="/admin/withdrawals" component={AdminWithdrawalsPage} />
         <Route path="/invite" component={InvitePage} />
         <Route path="/account" component={AccountPage} />
         <Route path="/login" component={LoginPage} />

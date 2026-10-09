@@ -28,6 +28,30 @@ enum LedgerEntryType {
   DEPOSIT_CREDIT
   INVESTMENT_DEBIT
   VERIFIED_EARNING_CREDIT
+  WITHDRAWAL_RESERVE
+  WITHDRAWAL_HOLD
+  WITHDRAWAL_RELEASE
+  WITHDRAWAL_UNHOLD
+  WITHDRAWAL_PAYOUT
+  WITHDRAWAL_FEE
+}
+
+enum LedgerBalanceBucket {
+  AVAILABLE
+  RESERVED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum WithdrawalDecision {
+  PROCESSING
+  COMPLETED
+  REJECTED
 }
 
 model User {
@@ -51,6 +75,11 @@ model User {
   depositRequests DepositRequest[]
   reviewedDeposits DepositRequest[] @relation("DepositReviewer")
   depositDecisionAudits DepositDecisionAudit[]
+  withdrawals WithdrawalRequest[] @relation("WithdrawalOwner")
+  processingWithdrawals WithdrawalRequest[] @relation("WithdrawalProcessor")
+  reviewedWithdrawals WithdrawalRequest[] @relation("WithdrawalReviewer")
+  withdrawalAudits WithdrawalAudit[]
+  withdrawalNotifications WithdrawalNotification[]
 
   @@index([referredBy])
 }
@@ -72,6 +101,8 @@ model Wallet {
   id               String   @id @default(cuid())
   userId           String   @unique
   availableBalance Decimal  @default(0) @db.Decimal(16, 2)
+  reservedBalance Decimal @default(0) @db.Decimal(16, 2)
+  activeWithdrawalId String? @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -125,13 +156,76 @@ model LedgerEntry {
   balanceAfter      Decimal         @db.Decimal(16, 2)
   createdAt         DateTime        @default(now())
   depositRequestId  String?         @unique
+  withdrawalId String?
+  balanceBucket LedgerBalanceBucket @default(AVAILABLE)
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Restrict)
   investment Investment?  @relation(fields: [investmentId], references: [id], onDelete: Restrict)
   depositRequest DepositRequest? @relation(fields: [depositRequestId], references: [id], onDelete: Restrict)
+  withdrawal WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@index([investmentId, type])
+  @@index([withdrawalId, type])
+}
+
+model WithdrawalRequest {
+  id String @id @default(cuid())
+  userId String
+  requestedAmount Decimal @db.Decimal(16, 2)
+  feeAmount Decimal @db.Decimal(16, 2)
+  netAmount Decimal @db.Decimal(16, 2)
+  feeBasisPoints Int @default(500)
+  accountName String
+  accountNumber String
+  idempotencyKey String
+  status WithdrawalStatus @default(PENDING)
+  processingById String?
+  processedAt DateTime?
+  reviewedById String?
+  reviewedAt DateTime?
+  completedAt DateTime?
+  payoutReference String? @unique
+  verificationNote String?
+  rejectionReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation("WithdrawalOwner", fields: [userId], references: [id], onDelete: Restrict)
+  processor User? @relation("WithdrawalProcessor", fields: [processingById], references: [id], onDelete: Restrict)
+  reviewer User? @relation("WithdrawalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+  audits WithdrawalAudit[]
+  notifications WithdrawalNotification[]
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model WithdrawalAudit {
+  id String @id @default(cuid())
+  withdrawalId String
+  adminId String
+  decision WithdrawalDecision
+  payoutReference String?
+  note String
+  createdAt DateTime @default(now())
+  withdrawal WithdrawalRequest @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
+  admin User @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  @@unique([withdrawalId, decision])
+}
+
+model WithdrawalNotification {
+  id String @id @default(cuid())
+  userId String
+  withdrawalId String
+  status WithdrawalStatus
+  message String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  withdrawal WithdrawalRequest @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
+  @@unique([withdrawalId, status])
+  @@index([userId, readAt])
 }
 
 enum DepositImagePurpose {

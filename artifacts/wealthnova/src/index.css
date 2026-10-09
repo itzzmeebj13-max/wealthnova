@@ -647,3 +647,9 @@
 .wn-confirm { margin-top:16px;padding:16px;border-radius:14px;background:#f0eadc; }
 .wn-confirm p { margin:0 0 12px;font-size:13px;line-height:1.55;color:#4e665b; }
 @media(max-width:700px){ .wn-half,.wn-full { grid-column:span 12; } }
+.wn-wd-balance { grid-column:span 8; }
+.wn-wd-completed { background:#dfeee4;color:#24543a; }
+.wn-wd-rejected { background:#f8e9e5;color:#984d42; }
+.wn-wd-processing { background:#fbf4e2;color:#765f39; }
+.wn-wd-pending { background:#efe9d9;color:#6b5a38; }
+@media(max-width:700px){ .wn-wd-balance { grid-column:span 12; } .wn-inv-list { grid-template-columns:minmax(0,1fr); } }
