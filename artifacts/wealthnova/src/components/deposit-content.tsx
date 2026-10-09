@@ -146,7 +146,6 @@ function DepositForm({ s }: { s: S }) {
   return (
     <section className="wn-card" style={{ gridColumn: 'span 12' }} data-testid="panel-deposit-form">
       <div className="wn-panel-head"><h2>Submit your payment</h2><ShieldCheck size={20} color="#547762" /></div>
-      {!open && <div className="wn-auth-warning" role="status" style={{ marginBottom: 16 }} data-testid="text-form-disabled"><strong>Deposits are currently unavailable.</strong> Submissions are disabled. Please do not send payment until the GCash account details are confirmed and deposit submissions are enabled.</div>}
       {done && <div className="wn-feedback" role="status" data-testid="status-deposit-success">Saved as Pending Verification. No wallet has been credited.</div>}
       {error && <div className="wn-feedback error" role="alert" data-testid="error-deposit-submit">{error}</div>}
       <div className="wn-field"><label htmlFor="dep-amount">Amount sent (PHP)</label>
@@ -158,7 +157,7 @@ function DepositForm({ s }: { s: S }) {
         <span className="wn-helper" data-testid="text-receipt-state">{upload.isPending ? 'Uploading…' : receiptName ? `Uploaded: ${receiptName}` : 'JPEG, PNG or WebP, up to 5 MB.'}</span></div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button className="wn-button wn-button-full" style={{ flex: 1 }} onClick={go} disabled={(!open && !locked) || submit.isPending || upload.isPending} data-testid="button-submit-deposit">
-          {submit.isPending && <LoaderCircle className="animate-spin" size={16} />}{locked && !submit.isPending ? 'Retry submit' : 'Submit Deposit Request'}</button>
+          {submit.isPending && <LoaderCircle className="animate-spin" size={16} />}{!open && !locked ? 'Deposits unavailable' : locked && !submit.isPending ? 'Retry submit' : 'Submit Deposit Request'}</button>
         {locked && !submit.isPending && <button className="wn-button wn-button-quiet" onClick={clearKey} data-testid="button-edit-deposit">Edit details</button>}
       </div>
     </section>

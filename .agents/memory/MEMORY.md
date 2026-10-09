@@ -1,0 +1,1 @@
+- [Deposit availability display](deposit-availability-display.md) — User wants unavailable-deposit warning blocks removed; keep availability in the disabled submit button and preserve security gates.
