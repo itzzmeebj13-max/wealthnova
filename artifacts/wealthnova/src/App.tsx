@@ -49,6 +49,8 @@ import logoPath from '@assets/file_00000000ec5c820bb3111b380eeb2b8a_179146595251
 import { AdminDepositDashboard } from '@/components/admin-deposit-dashboard';
 import { AdminWithdrawalDashboard } from '@/components/admin-withdrawal-dashboard';
 import { WithdrawalAccountLink, WithdrawalContent } from '@/components/withdrawal-content';
+import { InviteContent } from '@/components/invite-content';
+import { AdminReferralDashboard } from '@/components/admin-referral-dashboard';
 import { DepositContent } from '@/components/deposit-content';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
@@ -359,53 +361,12 @@ function AdminWithdrawalsPage() {
   return <Protected active="/account" title="Review withdrawals"><AdminWithdrawalDashboard /></Protected>;
 }
 
-function InvitePage() {
-  return <Protected active="/invite" title="Invite"><InviteContent /></Protected>;
+function AdminReferralsPage() {
+  return <Protected active="/account" title="Referral management"><AdminReferralDashboard /></Protected>;
 }
 
-function InviteContent() {
-  const referrals = useGetMyReferrals();
-  const [copyState, setCopyState] = useState('');
-  const [copyError, setCopyError] = useState('');
-  const copy = async (value: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyState(`${label} copied`);
-    } catch {
-      setCopyError('Copy is unavailable in this browser. Select and copy the text instead.');
-    }
-  };
-  if (referrals.isLoading) return <><PageHead eyebrow="Your personal invitation" title="Good things travel by word of mouth." description="Your personal code and link make it easy for someone you trust to join. The count below reflects your actual referrals." /><div className="wn-loading" data-testid="loading-invite"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
-  if (referrals.isError) return <><PageHead eyebrow="Your personal invitation" title="Good things travel by word of mouth." description="Your personal code and link make it easy for someone you trust to join. The count below reflects your actual referrals." /><QueryError message={errorMessage(referrals.error, 'Your referral information is temporarily unavailable.')} onRetry={() => void referrals.refetch()} testId="error-invite" /></>;
-  if (!referrals.data) return <><PageHead eyebrow="Your personal invitation" title="Good things travel by word of mouth." description="Your personal code and link make it easy for someone you trust to join. The count below reflects your actual referrals." /><div className="wn-loading" data-testid="loading-invite"><div className="wn-skeleton" /></div></>;
-  const referralLink = new URL(referrals.data.referralLink, window.location.origin).toString();
-  return <>
-    <PageHead eyebrow="Your personal invitation" title="Good things travel by word of mouth." description="Your personal code and link make it easy for someone you trust to join. The count below reflects your actual referrals." />
-        <div className="wn-grid wn-fade">
-          <section className="wn-card wn-wide" data-testid="panel-personal-invite">
-            <div className="wn-panel-head"><h2>Your invite details</h2><Gift size={20} color="#987c4c" /></div>
-            <div className="wn-codebox">
-              <div><span>PERSONAL REFERRAL CODE</span><strong data-testid="data-referral-code">{referrals.data.referralCode}</strong></div>
-              <button className="wn-button wn-button-light" onClick={() => void copy(referrals.data.referralCode, 'Code')} data-testid="button-copy-code"><Copy size={15} />{copyState === 'Code copied' ? 'Copied' : 'Copy code'}</button>
-            </div>
-            <div style={{ marginTop: 23 }}>
-              <div className="wn-card-label" style={{ marginBottom: 9 }}>Your referral link</div>
-              <div className="wn-codebox">
-                <a className="wn-inline-link" href={referralLink} target="_blank" rel="noreferrer" data-testid="link-personal-referral">{referralLink}</a>
-                <button className="wn-button wn-button-light" onClick={() => void copy(referralLink, 'Link')} data-testid="button-copy-link"><Copy size={15} />{copyState === 'Link copied' ? 'Copied' : 'Copy link'}</button>
-              </div>
-            </div>
-            {copyState && <p role="status" className="wn-feedback" style={{ marginTop: 14, marginBottom: 0 }} data-testid="status-copy">{copyState}</p>}
-            {copyError && <p role="status" className="wn-feedback error" style={{ marginTop: 14, marginBottom: 0 }} data-testid="error-copy">{copyError}</p>}
-          </section>
-          <section className="wn-card wn-narrow" data-testid="panel-referral-count">
-            <div className="wn-card-label">Your referral count</div>
-            <div className="wn-stat" data-testid="data-referral-count">{referrals.data.referralCount}</div>
-            <p className="wn-stat-caption">People who joined through your invitation.</p>
-            <div className="wn-callout" style={{ marginTop: 22 }}><div className="wn-callout-icon"><UsersRound size={18} /></div><p style={{ margin: 0 }}>This is a factual account summary, not a measure of earnings or rewards.</p></div>
-          </section>
-        </div>
-  </>;
+function InvitePage() {
+  return <Protected active="/invite" title="Invite"><InviteContent /></Protected>;
 }
 
 function AccountPage() {
@@ -446,7 +407,7 @@ function AccountContent() {
             </button>
           </section>
           <WithdrawalAccountLink />
-          {user.role === 'ADMIN' && <section className="wn-card wn-full" data-testid="panel-admin-withdrawals"><Link href="/admin/withdrawals" className="wn-link" data-testid="link-admin-withdrawals">Review withdrawals</Link></section>}
+          {user.role === 'ADMIN' && <section className="wn-card wn-full" data-testid="panel-admin-withdrawals"><Link href="/admin/withdrawals" className="wn-link" data-testid="link-admin-withdrawals">Review withdrawals</Link> <Link href="/admin/referrals" className="wn-link" style={{ marginLeft: 18 }} data-testid="link-admin-referrals">Manage referrals</Link></section>}
           <section className="wn-card wn-narrow" data-testid="panel-account-security">
             <div className="wn-panel-head"><h2>Account security</h2><LockKeyhole size={20} color="#547762" /></div>
             <div className="wn-callout"><div className="wn-callout-icon"><KeyRound size={18} /></div><div><strong>Private by design</strong><p>Your member area uses your signed-in session. Sign out when you’re finished on a shared device.</p></div></div>
@@ -634,6 +595,7 @@ function Router() {
         <Route path="/admin/deposits" component={AdminDepositsPage} />
         <Route path="/withdrawal" component={WithdrawalPage} />
         <Route path="/admin/withdrawals" component={AdminWithdrawalsPage} />
+        <Route path="/admin/referrals" component={AdminReferralsPage} />
         <Route path="/invite" component={InvitePage} />
         <Route path="/account" component={AccountPage} />
         <Route path="/login" component={LoginPage} />

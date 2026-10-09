@@ -34,6 +34,7 @@ enum LedgerEntryType {
   WITHDRAWAL_UNHOLD
   WITHDRAWAL_PAYOUT
   WITHDRAWAL_FEE
+  REFERRAL_COMMISSION_CREDIT
 }
 
 enum LedgerBalanceBucket {
@@ -80,6 +81,12 @@ model User {
   reviewedWithdrawals WithdrawalRequest[] @relation("WithdrawalReviewer")
   withdrawalAudits WithdrawalAudit[]
   withdrawalNotifications WithdrawalNotification[]
+  referralCommissions ReferralCommission[] @relation("CommissionBeneficiary")
+  generatedCommissions ReferralCommission[] @relation("CommissionSourceUser")
+  commissionAudits CommissionAudit[]
+  capitalFunding CompanyCapital[]
+  rateChanges ReferralRateVersion[]
+  referralNotifications ReferralNotification[]
 
   @@index([referredBy])
 }
@@ -140,6 +147,7 @@ model Investment {
   user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
   plan         InvestmentPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
   ledgerEntries LedgerEntry[]
+  referralCommissions ReferralCommission[]
 
   @@unique([userId, idempotencyKey])
   @@index([userId, status])
@@ -157,12 +165,15 @@ model LedgerEntry {
   createdAt         DateTime        @default(now())
   depositRequestId  String?         @unique
   withdrawalId String?
+  referralCommissionId String? @unique
   balanceBucket LedgerBalanceBucket @default(AVAILABLE)
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Restrict)
   investment Investment?  @relation(fields: [investmentId], references: [id], onDelete: Restrict)
   depositRequest DepositRequest? @relation(fields: [depositRequestId], references: [id], onDelete: Restrict)
   withdrawal WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
+  referralCommission ReferralCommission? @relation("CommissionCredit", fields: [referralCommissionId], references: [id], onDelete: Restrict)
+  sourceCommissions ReferralCommission[] @relation("CommissionSource")
 
   @@index([userId, createdAt])
   @@index([investmentId, type])
@@ -196,6 +207,7 @@ model WithdrawalRequest {
   ledgerEntries LedgerEntry[]
   audits WithdrawalAudit[]
   notifications WithdrawalNotification[]
+  companyFundEntries CompanyFundEntry[]
   @@unique([userId, idempotencyKey])
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -228,9 +240,149 @@ model WithdrawalNotification {
   @@index([userId, readAt])
 }
 
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum CompanyFundEntryType {
+  VERIFIED_CAPITAL
+  VERIFIED_FEE
+  COMMISSION_RESERVE
+  COMMISSION_HOLD
+  COMMISSION_RELEASE
+  COMMISSION_UNHOLD
+  COMMISSION_TRANSFER
+}
+
+model ReferralRateVersion {
+  id String @id @default(cuid())
+  version Int @unique
+  tier1BasisPoints Int
+  tier2BasisPoints Int
+  tier3BasisPoints Int
+  effectiveFrom DateTime
+  changedById String?
+  changeReason String
+  createdAt DateTime @default(now())
+  changedBy User? @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  commissions ReferralCommission[]
+}
+
+model CommissionFund {
+  id String @id
+  availableBalance Decimal @default(0) @db.Decimal(16, 2)
+  reservedBalance Decimal @default(0) @db.Decimal(16, 2)
+  updatedAt DateTime @updatedAt
+}
+
+model ReferralCommission {
+  id String @id @default(cuid())
+  beneficiaryId String
+  sourceUserId String
+  investmentId String
+  sourceLedgerId String
+  sourceTransactionReference String
+  rateVersionId String
+  tier Int
+  rateBasisPoints Int
+  basisAmount Decimal @db.Decimal(16, 2)
+  amount Decimal @db.Decimal(16, 2)
+  status CommissionStatus @default(PENDING)
+  approvedAt DateTime?
+  paidAt DateTime?
+  rejectedAt DateTime?
+  rejectionReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  beneficiary User @relation("CommissionBeneficiary", fields: [beneficiaryId], references: [id], onDelete: Restrict)
+  sourceUser User @relation("CommissionSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+  sourceLedger LedgerEntry @relation("CommissionSource", fields: [sourceLedgerId], references: [id], onDelete: Restrict)
+  rateVersion ReferralRateVersion @relation(fields: [rateVersionId], references: [id], onDelete: Restrict)
+  ledgerEntry LedgerEntry? @relation("CommissionCredit")
+  audits CommissionAudit[]
+  fundEntries CompanyFundEntry[]
+  notifications ReferralNotification[]
+  @@unique([investmentId, tier])
+  @@unique([investmentId, beneficiaryId])
+  @@index([beneficiaryId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model CommissionAudit {
+  id String @id @default(cuid())
+  commissionId String
+  adminId String
+  decision CommissionStatus
+  note String
+  createdAt DateTime @default(now())
+  commission ReferralCommission @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  admin User @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  @@unique([commissionId, decision])
+}
+
+model CompanyCapital {
+  id String @id @default(cuid())
+  amount Decimal @db.Decimal(16, 2)
+  transactionReference String @unique
+  receiptImageId String @unique
+  receiptDigest String @unique
+  verifiedById String
+  verificationNote String
+  idempotencyKey String
+  createdAt DateTime @default(now())
+  receipt DepositImage @relation(fields: [receiptImageId], references: [id], onDelete: Restrict)
+  verifier User @relation(fields: [verifiedById], references: [id], onDelete: Restrict)
+  fundEntries CompanyFundEntry[]
+  @@unique([verifiedById, idempotencyKey])
+}
+
+model CompanyFundEntry {
+  id String @id @default(cuid())
+  reference String @unique
+  type CompanyFundEntryType
+  balanceBucket LedgerBalanceBucket
+  amount Decimal @db.Decimal(16, 2)
+  balanceAfter Decimal @db.Decimal(16, 2)
+  commissionId String?
+  capitalId String?
+  withdrawalId String?
+  createdAt DateTime @default(now())
+  commission ReferralCommission? @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  capital CompanyCapital? @relation(fields: [capitalId], references: [id], onDelete: Restrict)
+  withdrawal WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
+  @@index([type, createdAt])
+}
+
+model IncomingPaymentClaim {
+  reference String @id
+  receiptDigest String @unique
+  sourceId String @unique
+  kind String
+  createdAt DateTime @default(now())
+}
+
+model ReferralNotification {
+  id String @id @default(cuid())
+  userId String
+  eventKey String @unique
+  type String
+  message String
+  commissionId String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  commission ReferralCommission? @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  @@index([userId, readAt, createdAt])
+}
+
 enum DepositImagePurpose {
   QR
   RECEIPT
+  CAPITAL_RECEIPT
 }
 
 enum DepositRequestStatus {
@@ -256,6 +408,7 @@ model DepositImage {
   user        User @relation(fields: [userId], references: [id], onDelete: Restrict)
   request     DepositRequest?
   settings    DepositPaymentSettings[]
+  capitalFunding CompanyCapital?
 
   @@index([userId, createdAt])
 }

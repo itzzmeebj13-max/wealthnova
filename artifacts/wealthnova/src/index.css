@@ -604,6 +604,13 @@
 .wn-codebox { background:#f0eadc;border:1px solid #e2d6bb;border-radius:15px;padding:19px;display:flex;align-items:center;justify-content:space-between;gap:12px; }
 .wn-codebox strong { display:block;font:800 25px var(--app-font-serif);letter-spacing:.12em;color:#294b40; }
 .wn-codebox span { display:block;color:#7b847b;font-size:11px;margin-bottom:6px; }
+.wn-referral-content .wn-card,
+.wn-referral-content .wn-inv { min-width:0; }
+.wn-referral-content .wn-codebox { flex-wrap:wrap;min-width:0;max-width:100%; }
+.wn-referral-content .wn-codebox > div,
+.wn-referral-content .wn-codebox > a { flex:1 1 180px;min-width:0;max-width:100%;overflow-wrap:anywhere; }
+.wn-referral-content .wn-codebox strong { font-size:clamp(18px,4vw,25px);letter-spacing:.06em;overflow-wrap:anywhere; }
+.wn-referral-content .wn-codebox > button { max-width:100%; }
 .wn-inline-link { font-size:12px;color:#416756;overflow-wrap:anywhere;line-height:1.5; }
 .wn-mobile-nav { display:none; }
 .wn-loading { display:grid;gap:14px; }

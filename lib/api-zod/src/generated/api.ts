@@ -128,7 +128,21 @@ export const getMyReferralsResponseReferralCountMin = 0;
 export const GetMyReferralsResponse = zod.object({
   "referralCode": zod.string(),
   "referralLink": zod.string(),
-  "referralCount": zod.number().int().min(getMyReferralsResponseReferralCountMin)
+  "referralCount": zod.number().int().min(getMyReferralsResponseReferralCountMin),
+  "tier1Count": zod.number().int(),
+  "tier2Count": zod.number().int(),
+  "tier3Count": zod.number().int(),
+  "totalInvitedUsers": zod.number().int(),
+  "rates": zod.array(zod.object({
+  "tier": zod.number().int(),
+  "percent": zod.number()
+})),
+  "commissionTotals": zod.object({
+  "pending": zod.string(),
+  "approved": zod.string(),
+  "rejected": zod.string(),
+  "paid": zod.string()
+})
 })
 
 
@@ -795,5 +809,349 @@ export const GetWithdrawalAuditResponseItem = zod.object({
   "createdAt": zod.string()
 })
 export const GetWithdrawalAuditResponse = zod.array(GetWithdrawalAuditResponseItem)
+
+
+export const getMyCommissionsQueryStatusDefault = `ALL`;
+export const getMyCommissionsQueryPageDefault = 1;
+
+
+
+export const GetMyCommissionsQueryParams = zod.object({
+  "status": zod.enum(['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'PAID']).default(getMyCommissionsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).default(getMyCommissionsQueryPageDefault)
+})
+
+export const GetMyCommissionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "beneficiaryId": zod.string(),
+  "beneficiaryAccount": zod.string(),
+  "sourceAccount": zod.string(),
+  "investmentId": zod.string(),
+  "sourceTransactionReference": zod.string(),
+  "rateVersion": zod.number().int(),
+  "planName": zod.string(),
+  "tier": zod.number().int(),
+  "ratePercent": zod.number(),
+  "basisAmount": zod.string(),
+  "amount": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'PAID']),
+  "rejectionReason": zod.string().nullable(),
+  "approvedAt": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+export const getAdminCommissionsQuerySearchMax = 100;
+
+export const getAdminCommissionsQueryStatusDefault = `ALL`;
+export const getAdminCommissionsQueryPageDefault = 1;
+
+
+
+export const GetAdminCommissionsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getAdminCommissionsQuerySearchMax).optional(),
+  "status": zod.enum(['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'PAID']).default(getAdminCommissionsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).default(getAdminCommissionsQueryPageDefault)
+})
+
+export const GetAdminCommissionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "beneficiaryId": zod.string(),
+  "beneficiaryAccount": zod.string(),
+  "sourceAccount": zod.string(),
+  "investmentId": zod.string(),
+  "sourceTransactionReference": zod.string(),
+  "rateVersion": zod.number().int(),
+  "planName": zod.string(),
+  "tier": zod.number().int(),
+  "ratePercent": zod.number(),
+  "basisAmount": zod.string(),
+  "amount": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'PAID']),
+  "rejectionReason": zod.string().nullable(),
+  "approvedAt": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+export const ApproveCommissionParams = zod.object({
+  "commissionId": zod.coerce.string()
+})
+
+export const approveCommissionBodyNoteMin = 5;
+export const approveCommissionBodyNoteMax = 1000;
+
+
+
+export const ApproveCommissionBody = zod.object({
+  "note": zod.string().min(approveCommissionBodyNoteMin).max(approveCommissionBodyNoteMax),
+  "confirmed": zod.boolean()
+})
+
+export const ApproveCommissionResponse = zod.object({
+  "id": zod.string(),
+  "beneficiaryId": zod.string(),
+  "beneficiaryAccount": zod.string(),
+  "sourceAccount": zod.string(),
+  "investmentId": zod.string(),
+  "sourceTransactionReference": zod.string(),
+  "rateVersion": zod.number().int(),
+  "planName": zod.string(),
+  "tier": zod.number().int(),
+  "ratePercent": zod.number(),
+  "basisAmount": zod.string(),
+  "amount": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'PAID']),
+  "rejectionReason": zod.string().nullable(),
+  "approvedAt": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+export const RejectCommissionParams = zod.object({
+  "commissionId": zod.coerce.string()
+})
+
+export const rejectCommissionBodyNoteMin = 5;
+export const rejectCommissionBodyNoteMax = 1000;
+
+
+
+export const RejectCommissionBody = zod.object({
+  "note": zod.string().min(rejectCommissionBodyNoteMin).max(rejectCommissionBodyNoteMax),
+  "confirmed": zod.boolean()
+})
+
+export const RejectCommissionResponse = zod.object({
+  "id": zod.string(),
+  "beneficiaryId": zod.string(),
+  "beneficiaryAccount": zod.string(),
+  "sourceAccount": zod.string(),
+  "investmentId": zod.string(),
+  "sourceTransactionReference": zod.string(),
+  "rateVersion": zod.number().int(),
+  "planName": zod.string(),
+  "tier": zod.number().int(),
+  "ratePercent": zod.number(),
+  "basisAmount": zod.string(),
+  "amount": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'PAID']),
+  "rejectionReason": zod.string().nullable(),
+  "approvedAt": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+export const PayCommissionParams = zod.object({
+  "commissionId": zod.coerce.string()
+})
+
+export const payCommissionBodyNoteMin = 5;
+export const payCommissionBodyNoteMax = 1000;
+
+
+
+export const PayCommissionBody = zod.object({
+  "note": zod.string().min(payCommissionBodyNoteMin).max(payCommissionBodyNoteMax),
+  "confirmed": zod.boolean()
+})
+
+export const PayCommissionResponse = zod.object({
+  "id": zod.string(),
+  "beneficiaryId": zod.string(),
+  "beneficiaryAccount": zod.string(),
+  "sourceAccount": zod.string(),
+  "investmentId": zod.string(),
+  "sourceTransactionReference": zod.string(),
+  "rateVersion": zod.number().int(),
+  "planName": zod.string(),
+  "tier": zod.number().int(),
+  "ratePercent": zod.number(),
+  "basisAmount": zod.string(),
+  "amount": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'PAID']),
+  "rejectionReason": zod.string().nullable(),
+  "approvedAt": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+export const GetCommissionAuditParams = zod.object({
+  "commissionId": zod.coerce.string()
+})
+
+export const GetCommissionAuditResponseItem = zod.object({
+  "id": zod.string(),
+  "adminId": zod.string(),
+  "decision": zod.string(),
+  "note": zod.string(),
+  "createdAt": zod.string()
+})
+export const GetCommissionAuditResponse = zod.array(GetCommissionAuditResponseItem)
+
+
+export const GetCommissionFundResponse = zod.object({
+  "availableBalance": zod.string(),
+  "reservedBalance": zod.string(),
+  "totalCapital": zod.string(),
+  "totalFees": zod.string(),
+  "totalPaid": zod.string(),
+  "recentCapital": zod.array(zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptImageId": zod.string(),
+  "verifiedById": zod.string(),
+  "verificationNote": zod.string(),
+  "createdAt": zod.string()
+})),
+  "entries": zod.array(zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "type": zod.string(),
+  "balanceBucket": zod.string(),
+  "amount": zod.string(),
+  "balanceAfter": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+export const verifyCompanyCapitalBodyAmountRegExp = new RegExp('^\\d{1,12}(\\.\\d{1,2})?$');
+export const verifyCompanyCapitalBodyTransactionReferenceMin = 6;
+export const verifyCompanyCapitalBodyTransactionReferenceMax = 64;
+
+export const verifyCompanyCapitalBodyVerificationNoteMin = 10;
+export const verifyCompanyCapitalBodyVerificationNoteMax = 1000;
+
+
+
+export const VerifyCompanyCapitalBody = zod.object({
+  "amount": zod.string().regex(verifyCompanyCapitalBodyAmountRegExp),
+  "transactionReference": zod.string().min(verifyCompanyCapitalBodyTransactionReferenceMin).max(verifyCompanyCapitalBodyTransactionReferenceMax),
+  "receiptImageId": zod.string(),
+  "verificationNote": zod.string().min(verifyCompanyCapitalBodyVerificationNoteMin).max(verifyCompanyCapitalBodyVerificationNoteMax),
+  "confirmedCapitalReceived": zod.boolean(),
+  "idempotencyKey": zod.string().uuid()
+})
+
+export const VerifyCompanyCapitalResponse = zod.object({
+  "id": zod.string(),
+  "amount": zod.string(),
+  "transactionReference": zod.string(),
+  "receiptImageId": zod.string(),
+  "verifiedById": zod.string(),
+  "verificationNote": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+export const GetAdminReferralRatesResponse = zod.object({
+  "current": zod.object({
+  "version": zod.number().int(),
+  "tier1": zod.number(),
+  "tier2": zod.number(),
+  "tier3": zod.number(),
+  "changedById": zod.string().nullable(),
+  "changedByAccount": zod.string().nullable(),
+  "changeReason": zod.string(),
+  "createdAt": zod.string()
+}),
+  "history": zod.array(zod.object({
+  "version": zod.number().int(),
+  "tier1": zod.number(),
+  "tier2": zod.number(),
+  "tier3": zod.number(),
+  "changedById": zod.string().nullable(),
+  "changedByAccount": zod.string().nullable(),
+  "changeReason": zod.string(),
+  "createdAt": zod.string()
+})),
+  "totalUsers": zod.number().int(),
+  "referralRelationships": zod.number().int(),
+  "totalCommissions": zod.number().int()
+})
+
+
+export const updateReferralRatesBodyReasonMin = 5;
+export const updateReferralRatesBodyReasonMax = 1000;
+
+
+
+export const UpdateReferralRatesBody = zod.object({
+  "tier1": zod.string(),
+  "tier2": zod.string(),
+  "tier3": zod.string(),
+  "expectedVersion": zod.number().int(),
+  "reason": zod.string().min(updateReferralRatesBodyReasonMin).max(updateReferralRatesBodyReasonMax)
+})
+
+export const UpdateReferralRatesResponse = zod.object({
+  "current": zod.object({
+  "version": zod.number().int(),
+  "tier1": zod.number(),
+  "tier2": zod.number(),
+  "tier3": zod.number(),
+  "changedById": zod.string().nullable(),
+  "changedByAccount": zod.string().nullable(),
+  "changeReason": zod.string(),
+  "createdAt": zod.string()
+}),
+  "history": zod.array(zod.object({
+  "version": zod.number().int(),
+  "tier1": zod.number(),
+  "tier2": zod.number(),
+  "tier3": zod.number(),
+  "changedById": zod.string().nullable(),
+  "changedByAccount": zod.string().nullable(),
+  "changeReason": zod.string(),
+  "createdAt": zod.string()
+})),
+  "totalUsers": zod.number().int(),
+  "referralRelationships": zod.number().int(),
+  "totalCommissions": zod.number().int()
+})
+
+
+export const GetReferralNotificationsResponseItem = zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.string()
+})
+export const GetReferralNotificationsResponse = zod.array(GetReferralNotificationsResponseItem)
+
+
+export const AcknowledgeReferralNotificationParams = zod.object({
+  "notificationId": zod.coerce.string()
+})
+
+export const AcknowledgeReferralNotificationResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+export const UploadCompanyCapitalReceiptBody = zod.object({
+  "file": zod.instanceof(Blob)
+})
+
+export const UploadCompanyCapitalReceiptResponse = zod.object({
+  "id": zod.string()
+})
 
 

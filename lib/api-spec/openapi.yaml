@@ -576,8 +576,319 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/WithdrawalAuditEntry" } }
+  /referrals/commissions:
+    get:
+      operationId: getMyCommissions
+      tags: [referrals]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [ALL, PENDING, APPROVED, REJECTED, PAID], default: ALL } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Own commission history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommissionPage" }
+  /admin/commissions:
+    get:
+      operationId: getAdminCommissions
+      tags: [referrals]
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { type: string, enum: [ALL, PENDING, APPROVED, REJECTED, PAID], default: ALL } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Admin commission review queue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommissionPage" }
+  /admin/commissions/{commissionId}/approve:
+    post:
+      operationId: approveCommission
+      tags: [referrals]
+      parameters:
+        - { name: commissionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommissionDecisionInput" }
+      responses:
+        "200":
+          description: Approved with a fully funded reservation; not a wallet credit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Commission" }
+  /admin/commissions/{commissionId}/reject:
+    post:
+      operationId: rejectCommission
+      tags: [referrals]
+      parameters:
+        - { name: commissionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommissionDecisionInput" }
+      responses:
+        "200":
+          description: Rejected with any commission-fund reservation released once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Commission" }
+  /admin/commissions/{commissionId}/pay:
+    post:
+      operationId: payCommission
+      tags: [referrals]
+      parameters:
+        - { name: commissionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommissionDecisionInput" }
+      responses:
+        "200":
+          description: Reserved verified operating money transferred to member wallet once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Commission" }
+  /admin/commissions/{commissionId}/audit:
+    get:
+      operationId: getCommissionAudit
+      tags: [referrals]
+      parameters:
+        - { name: commissionId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Immutable Admin decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommissionAuditEntry" }
+  /admin/commission-fund:
+    get:
+      operationId: getCommissionFund
+      tags: [referrals]
+      responses:
+        "200":
+          description: Verified company funding and reserved commission balances
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommissionFundSummary" }
+  /admin/commission-fund/capital:
+    post:
+      operationId: verifyCompanyCapital
+      tags: [referrals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyCapitalInput" }
+      responses:
+        "200":
+          description: Actual separately verified company capital recorded once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyCapitalRecord" }
+  /admin/referrals/rates:
+    get:
+      operationId: getAdminReferralRates
+      tags: [referrals]
+      responses:
+        "200":
+          description: Current rates, immutable rate history and referral statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReferralRateSettings" }
+    put:
+      operationId: updateReferralRates
+      tags: [referrals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReferralRateInput" }
+      responses:
+        "200":
+          description: New version for future purchases; historical commission snapshots unchanged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReferralRateSettings" }
+  /referrals/notifications:
+    get:
+      operationId: getReferralNotifications
+      tags: [referrals]
+      responses:
+        "200":
+          description: Own unread notifications generated by actual database events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ReferralNotification" }
+  /referrals/notifications/{notificationId}/read:
+    post:
+      operationId: acknowledgeReferralNotification
+      tags: [referrals]
+      parameters:
+        - { name: notificationId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Own notification acknowledged
+          content:
+            application/json:
+              schema: { type: object, required: [success], properties: { success: { type: boolean } } }
+  /admin/commission-fund/receipt:
+    post:
+      operationId: uploadCompanyCapitalReceipt
+      tags: [referrals]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/CapitalReceiptInput" }
+      responses:
+        "200":
+          description: Private validated capital evidence image
+          content:
+            application/json:
+              schema: { type: object, required: [id], properties: { id: { type: string } } }
 components:
   schemas:
+    ReferralRateInput:
+      type: object
+      required: [tier1, tier2, tier3, expectedVersion, reason]
+      properties:
+        tier1: { type: string }
+        tier2: { type: string }
+        tier3: { type: string }
+        expectedVersion: { type: integer }
+        reason: { type: string, minLength: 5, maxLength: 1000 }
+    CapitalReceiptInput:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+    ReferralNotification:
+      type: object
+      required: [id, type, message, createdAt]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        message: { type: string }
+        createdAt: { type: string }
+    ReferralRateVersion:
+      type: object
+      required: [version, tier1, tier2, tier3, changedById, changedByAccount, changeReason, createdAt]
+      properties:
+        version: { type: integer }
+        tier1: { type: number }
+        tier2: { type: number }
+        tier3: { type: number }
+        changedById: { type: [string, "null"] }
+        changedByAccount: { type: [string, "null"] }
+        changeReason: { type: string }
+        createdAt: { type: string }
+    ReferralRateSettings:
+      type: object
+      required: [current, history, totalUsers, referralRelationships, totalCommissions]
+      properties:
+        current: { $ref: "#/components/schemas/ReferralRateVersion" }
+        history: { type: array, items: { $ref: "#/components/schemas/ReferralRateVersion" } }
+        totalUsers: { type: integer }
+        referralRelationships: { type: integer }
+        totalCommissions: { type: integer }
+    CommissionDecisionInput:
+      type: object
+      required: [note, confirmed]
+      properties:
+        note: { type: string, minLength: 5, maxLength: 1000 }
+        confirmed: { type: boolean }
+    Commission:
+      type: object
+      required: [id, beneficiaryId, beneficiaryAccount, sourceAccount, investmentId, sourceTransactionReference, rateVersion, planName, tier, ratePercent, basisAmount, amount, status, rejectionReason, approvedAt, paidAt, createdAt]
+      properties:
+        id: { type: string }
+        beneficiaryId: { type: string }
+        beneficiaryAccount: { type: string }
+        sourceAccount: { type: string }
+        investmentId: { type: string }
+        sourceTransactionReference: { type: string }
+        rateVersion: { type: integer }
+        planName: { type: string }
+        tier: { type: integer }
+        ratePercent: { type: number }
+        basisAmount: { type: string }
+        amount: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, PAID] }
+        rejectionReason: { type: [string, "null"] }
+        approvedAt: { type: [string, "null"] }
+        paidAt: { type: [string, "null"] }
+        createdAt: { type: string }
+    CommissionPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Commission" } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    CommissionAuditEntry:
+      type: object
+      required: [id, adminId, decision, note, createdAt]
+      properties:
+        id: { type: string }
+        adminId: { type: string }
+        decision: { type: string }
+        note: { type: string }
+        createdAt: { type: string }
+    CompanyCapitalInput:
+      type: object
+      required: [amount, transactionReference, receiptImageId, verificationNote, confirmedCapitalReceived, idempotencyKey]
+      properties:
+        amount: { type: string, pattern: '^\d{1,12}(\.\d{1,2})?$' }
+        transactionReference: { type: string, minLength: 6, maxLength: 64 }
+        receiptImageId: { type: string }
+        verificationNote: { type: string, minLength: 10, maxLength: 1000 }
+        confirmedCapitalReceived: { type: boolean }
+        idempotencyKey: { type: string, format: uuid }
+    CompanyCapitalRecord:
+      type: object
+      required: [id, amount, transactionReference, receiptImageId, verifiedById, verificationNote, createdAt]
+      properties:
+        id: { type: string }
+        amount: { type: string }
+        transactionReference: { type: string }
+        receiptImageId: { type: string }
+        verifiedById: { type: string }
+        verificationNote: { type: string }
+        createdAt: { type: string }
+    CommissionFundSummary:
+      type: object
+      required: [availableBalance, reservedBalance, totalCapital, totalFees, totalPaid, recentCapital, entries]
+      properties:
+        availableBalance: { type: string }
+        reservedBalance: { type: string }
+        totalCapital: { type: string }
+        totalFees: { type: string }
+        totalPaid: { type: string }
+        recentCapital: { type: array, items: { $ref: "#/components/schemas/CompanyCapitalRecord" } }
+        entries:
+          type: array
+          items:
+            type: object
+            required: [id, reference, type, balanceBucket, amount, balanceAfter, createdAt]
+            properties:
+              id: { type: string }
+              reference: { type: string }
+              type: { type: string }
+              balanceBucket: { type: string }
+              amount: { type: string }
+              balanceAfter: { type: string }
+              createdAt: { type: string }
     WithdrawalQuote:
       type: object
       required: [requestedAmount, feeAmount, netAmount, feePercent]
@@ -884,7 +1195,27 @@ components:
         referralCount:
           type: integer
           minimum: 0
-      required: [referralCode, referralLink, referralCount]
+        tier1Count: { type: integer }
+        tier2Count: { type: integer }
+        tier3Count: { type: integer }
+        totalInvitedUsers: { type: integer }
+        rates:
+          type: array
+          items:
+            type: object
+            required: [tier, percent]
+            properties:
+              tier: { type: integer }
+              percent: { type: number }
+        commissionTotals:
+          type: object
+          required: [pending, approved, rejected, paid]
+          properties:
+            pending: { type: string }
+            approved: { type: string }
+            rejected: { type: string }
+            paid: { type: string }
+      required: [referralCode, referralLink, referralCount, tier1Count, tier2Count, tier3Count, totalInvitedUsers, rates, commissionTotals]
     DashboardSummary:
       type: object
       properties:

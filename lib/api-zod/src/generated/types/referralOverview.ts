@@ -5,10 +5,18 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+import type { ReferralOverviewCommissionTotals } from './referralOverviewCommissionTotals';
+import type { ReferralOverviewRatesItem } from './referralOverviewRatesItem';
 
 export interface ReferralOverview {
   referralCode: string;
   referralLink: string;
   /** @minimum 0 */
   referralCount: number;
+  tier1Count: number;
+  tier2Count: number;
+  tier3Count: number;
+  totalInvitedUsers: number;
+  rates: ReferralOverviewRatesItem[];
+  commissionTotals: ReferralOverviewCommissionTotals;
 }

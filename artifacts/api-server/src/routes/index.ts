@@ -5,6 +5,7 @@ import memberRouter from "./member";
 import investmentsRouter from "./investments";
 import depositsRouter from "./deposits";
 import withdrawalsRouter from "./withdrawals";
+import referralsRouter from "./referrals";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(memberRouter);
 router.use(investmentsRouter);
 router.use(depositsRouter);
 router.use(withdrawalsRouter);
+router.use(referralsRouter);
 
 export default router;

@@ -5,6 +5,155 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+export interface ReferralRateInput {
+  tier1: string;
+  tier2: string;
+  tier3: string;
+  expectedVersion: number;
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export interface CapitalReceiptInput {
+  file: Blob;
+}
+
+export interface ReferralNotification {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface ReferralRateVersion {
+  version: number;
+  tier1: number;
+  tier2: number;
+  tier3: number;
+  /** @nullable */
+  changedById: string | null;
+  /** @nullable */
+  changedByAccount: string | null;
+  changeReason: string;
+  createdAt: string;
+}
+
+export interface ReferralRateSettings {
+  current: ReferralRateVersion;
+  history: ReferralRateVersion[];
+  totalUsers: number;
+  referralRelationships: number;
+  totalCommissions: number;
+}
+
+export interface CommissionDecisionInput {
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  note: string;
+  confirmed: boolean;
+}
+
+export type CommissionStatus = typeof CommissionStatus[keyof typeof CommissionStatus];
+
+
+export const CommissionStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  PAID: 'PAID',
+} as const;
+
+export interface Commission {
+  id: string;
+  beneficiaryId: string;
+  beneficiaryAccount: string;
+  sourceAccount: string;
+  investmentId: string;
+  sourceTransactionReference: string;
+  rateVersion: number;
+  planName: string;
+  tier: number;
+  ratePercent: number;
+  basisAmount: string;
+  amount: string;
+  status: CommissionStatus;
+  /** @nullable */
+  rejectionReason: string | null;
+  /** @nullable */
+  approvedAt: string | null;
+  /** @nullable */
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface CommissionPage {
+  items: Commission[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CommissionAuditEntry {
+  id: string;
+  adminId: string;
+  decision: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface CompanyCapitalInput {
+  /** @pattern ^\d{1,12}(\.\d{1,2})?$ */
+  amount: string;
+  /**
+     * @minLength 6
+     * @maxLength 64
+     */
+  transactionReference: string;
+  receiptImageId: string;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  verificationNote: string;
+  confirmedCapitalReceived: boolean;
+  idempotencyKey: string;
+}
+
+export interface CompanyCapitalRecord {
+  id: string;
+  amount: string;
+  transactionReference: string;
+  receiptImageId: string;
+  verifiedById: string;
+  verificationNote: string;
+  createdAt: string;
+}
+
+export type CommissionFundSummaryEntriesItem = {
+  id: string;
+  reference: string;
+  type: string;
+  balanceBucket: string;
+  amount: string;
+  balanceAfter: string;
+  createdAt: string;
+};
+
+export interface CommissionFundSummary {
+  availableBalance: string;
+  reservedBalance: string;
+  totalCapital: string;
+  totalFees: string;
+  totalPaid: string;
+  recentCapital: CompanyCapitalRecord[];
+  entries: CommissionFundSummaryEntriesItem[];
+}
+
 export interface WithdrawalQuote {
   requestedAmount: string;
   feeAmount: string;
@@ -401,11 +550,29 @@ export interface ReferralValidation {
   message: string;
 }
 
+export type ReferralOverviewRatesItem = {
+  tier: number;
+  percent: number;
+};
+
+export type ReferralOverviewCommissionTotals = {
+  pending: string;
+  approved: string;
+  rejected: string;
+  paid: string;
+};
+
 export interface ReferralOverview {
   referralCode: string;
   referralLink: string;
   /** @minimum 0 */
   referralCount: number;
+  tier1Count: number;
+  tier2Count: number;
+  tier3Count: number;
+  totalInvitedUsers: number;
+  rates: ReferralOverviewRatesItem[];
+  commissionTotals: ReferralOverviewCommissionTotals;
 }
 
 export type DashboardSummaryRole = typeof DashboardSummaryRole[keyof typeof DashboardSummaryRole];
@@ -587,5 +754,55 @@ export type GetAdminWithdrawals200 = {
   total: number;
   page: number;
   pageSize: number;
+};
+
+export type GetMyCommissionsParams = {
+status?: GetMyCommissionsStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type GetMyCommissionsStatus = typeof GetMyCommissionsStatus[keyof typeof GetMyCommissionsStatus];
+
+
+export const GetMyCommissionsStatus = {
+  ALL: 'ALL',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  PAID: 'PAID',
+} as const;
+
+export type GetAdminCommissionsParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
+status?: GetAdminCommissionsStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type GetAdminCommissionsStatus = typeof GetAdminCommissionsStatus[keyof typeof GetAdminCommissionsStatus];
+
+
+export const GetAdminCommissionsStatus = {
+  ALL: 'ALL',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  PAID: 'PAID',
+} as const;
+
+export type AcknowledgeReferralNotification200 = {
+  success: boolean;
+};
+
+export type UploadCompanyCapitalReceipt200 = {
+  id: string;
 };
 

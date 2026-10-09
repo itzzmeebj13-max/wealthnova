@@ -9,6 +9,7 @@ import { prisma } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { mapInvestment, moneyString } from "../lib/investments";
 import { getPaymentSettings, mapPaymentSettings } from "../lib/deposits";
+import { getReferralOverview } from "../lib/referral-data";
 
 const router: IRouter = Router();
 
@@ -41,7 +42,7 @@ router.get("/dashboard/summary", requireAuth, async (request, response) => {
         _sum: { principalAmount: true },
       }),
       prisma.ledgerEntry.aggregate({
-        where: { userId: user.id, type: "VERIFIED_EARNING_CREDIT" },
+        where: { userId: user.id, type: { in: ["VERIFIED_EARNING_CREDIT", "REFERRAL_COMMISSION_CREDIT"] } },
         _sum: { amount: true },
       }),
       prisma.investment.findMany({
@@ -73,14 +74,12 @@ router.get("/referrals/me", requireAuth, async (request, response) => {
     return;
   }
 
-  const referralCount = await prisma.user.count({
-    where: { referredBy: user.id },
-  });
+  const overview = await getReferralOverview(user.id);
   response.json(
     GetMyReferralsResponse.parse({
       referralCode: user.referralCode,
       referralLink: `/register?referralCode=${encodeURIComponent(user.referralCode)}`,
-      referralCount,
+      ...overview,
     }),
   );
 });

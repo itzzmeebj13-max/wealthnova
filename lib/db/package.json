@@ -10,6 +10,7 @@
   "scripts": {
     "prisma:generate": "prisma generate --schema ./prisma/schema.prisma",
     "db:push": "prisma db push --schema ./prisma/schema.prisma",
+    "referrals:install": "node ./prisma/install-referrals.mjs",
     "db:seed": "node ./prisma/seed.mjs"
   },
   "dependencies": {
