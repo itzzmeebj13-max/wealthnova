@@ -12,7 +12,7 @@ import {
   useUpdateDepositPaymentSettings,
   useUploadDepositImage,
 } from '@workspace/api-client-react';
-import type { DepositPaymentSettings, DepositRequestInput } from '@workspace/api-client-react';
+import type { DepositPaymentSettings, DepositRequest, DepositRequestInput } from '@workspace/api-client-react';
 import { isValidPhilippineMobileNumber, PHILIPPINE_MOBILE_VALIDATION_MESSAGE } from '@workspace/api-zod';
 
 const REQ = { request: { headers: { 'X-WealthNova-Request': '1' } } };
@@ -111,7 +111,7 @@ function DepositForm({ s }: { s: S }) {
   const [fileKey, setFileKey] = useState(0);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<Pick<DepositRequest, 'status' | 'rejectionReason'> | null>(null);
   const keyRef = useRef<string | null>(null);
   const pendingRef = useRef<DepositRequestInput | null>(null);
   const open = s.enabled;
@@ -119,7 +119,7 @@ function DepositForm({ s }: { s: S }) {
 
   const pick = (f: File | undefined) => {
     if (!f) return;
-    setError(''); setDone(false);
+    setError(''); setDone(null);
     const bad = checkFile(f);
     if (bad) { setError(bad); setFileKey(k => k + 1); return; }
     setReceiptId(''); setReceiptName('');
@@ -129,7 +129,7 @@ function DepositForm({ s }: { s: S }) {
     });
   };
   const go = () => {
-    setError(''); setDone(false);
+    setError(''); setDone(null);
     if (!pendingRef.current) {
       if (!AMOUNT_RE.test(amount) || Number(amount) <= 0) return setError('Enter a valid amount, up to 2 decimals.');
       if (Number(amount) < Number(s.minimumAmount)) return setError(`Minimum amount is ${peso(s.minimumAmount)}.`);
@@ -141,10 +141,10 @@ function DepositForm({ s }: { s: S }) {
     }
     setLocked(true);
     submit.mutate({ data: pendingRef.current }, {
-      onSuccess: () => {
+      onSuccess: saved => {
         keyRef.current = null; pendingRef.current = null; setLocked(false);
         setAmount(''); setReference(''); setReceiptId(''); setReceiptName(''); setFileKey(k => k + 1);
-        setDone(true);
+        setDone({ status: saved.status, rejectionReason: saved.rejectionReason });
         void client.invalidateQueries({ queryKey: getGetMyDepositRequestsQueryKey() });
       },
       onError: e => {
@@ -159,12 +159,16 @@ function DepositForm({ s }: { s: S }) {
   return (
     <section className="wn-card" style={{ gridColumn: 'span 12' }} data-testid="panel-deposit-form">
       <div className="wn-panel-head"><h2>Submit your payment</h2><ShieldCheck size={20} color="#547762" /></div>
-      {done && <div className="wn-feedback" role="status" data-testid="status-deposit-success">Saved as Pending Verification. No wallet has been credited.</div>}
+      {done && <div className={`wn-feedback${done.status === 'REJECTED' ? ' error' : ''}`} role="status" data-testid="status-deposit-success">
+        {done.status === 'PENDING_VERIFICATION' && 'Saved as Pending Verification. No wallet has been credited.'}
+        {done.status === 'APPROVED' && 'Approved. This is an existing approved request. No additional wallet credit was created by retrying.'}
+        {done.status === 'REJECTED' && <>Rejected. This request was already rejected.{done.rejectionReason && <div style={{ whiteSpace: 'pre-wrap' }} data-testid="text-deposit-submit-rejection-reason">Reason: {done.rejectionReason}</div>}</>}
+      </div>}
       {error && <div className="wn-feedback error" role="alert" data-testid="error-deposit-submit">{error}</div>}
       <div className="wn-field"><label htmlFor="dep-amount">Amount sent (PHP)</label>
-        <input id="dep-amount" className="wn-input" inputMode="decimal" placeholder="0.00" value={amount} disabled={!open || frozen} onChange={e => { setAmount(e.target.value); setDone(false); }} data-testid="input-deposit-amount" /></div>
+        <input id="dep-amount" className="wn-input" inputMode="decimal" placeholder="0.00" value={amount} disabled={!open || frozen} onChange={e => { setAmount(e.target.value); setDone(null); }} data-testid="input-deposit-amount" /></div>
       <div className="wn-field"><label htmlFor="dep-ref">GCash reference number</label>
-        <input id="dep-ref" className="wn-input" maxLength={64} value={reference} disabled={!open || frozen} onChange={e => { setReference(e.target.value); setDone(false); }} data-testid="input-deposit-reference" /></div>
+        <input id="dep-ref" className="wn-input" maxLength={64} value={reference} disabled={!open || frozen} onChange={e => { setReference(e.target.value); setDone(null); }} data-testid="input-deposit-reference" /></div>
       <div className="wn-field"><label htmlFor="dep-receipt">Receipt screenshot</label>
         <input key={fileKey} id="dep-receipt" type="file" accept="image/jpeg,image/png,image/webp" className="wn-input" style={{ height: 'auto', padding: 10 }} disabled={!open || frozen || upload.isPending} onChange={e => pick(e.target.files?.[0])} data-testid="input-deposit-receipt" />
         <span className="wn-helper" data-testid="text-receipt-state">{upload.isPending ? 'Uploading…' : receiptName ? `Uploaded: ${receiptName}` : 'JPEG, PNG or WebP, up to 5 MB.'}</span></div>
