@@ -9,6 +9,8 @@ export interface DepositPaymentSettings {
   configured: boolean;
   enabled: boolean;
   submissionsEnabled: boolean;
+  accountDetailsConfirmed: boolean;
+  blockingReasons: string[];
   accountName: string;
   accountNumber: string;
   instructions: string;
@@ -21,6 +23,7 @@ export interface DepositPaymentSettings {
 }
 
 export interface DepositPaymentSettingsInput {
+  accountDetailsConfirmed?: boolean;
   /** @maxLength 120 */
   accountName: string;
   /** @maxLength 32 */

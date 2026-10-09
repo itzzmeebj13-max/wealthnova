@@ -6,6 +6,7 @@ import { prisma } from "@workspace/db";
 import app from "../app";
 import { startSession, SESSION_COOKIE } from "./auth-session";
 import { getPaymentSettings, submitDeposit } from "./deposits";
+import { checkDepositSetupFlow } from "./deposit-setup.test-helper";
 import { decideDeposit } from "./deposit-decisions";
 import { Prisma } from "@prisma/client";
 import { sanitizeImage, storePrivateImage, deletePrivateImage, DepositError } from "./private-images";
@@ -57,7 +58,7 @@ try {
   assert.equal((await fetch(`${base}/admin/deposits/requests`)).status, 401);
   assert.equal((await fetch(`${base}/admin/deposits/requests`, { headers: { Cookie: ownerCookie } })).status, 403);
   const approvalInput = {
-    verifiedAmount: "100.00", confirmedPaymentReceived: true,
+    verifiedAmount: "350.00", confirmedPaymentReceived: true,
     confirmedAmountDifference: false,
     verificationNote: "UNCOMMITTED TEST ONLY — no actual payment",
   };
@@ -115,29 +116,18 @@ try {
   // settings, requests, account details, ledger, or wallet funds are changed.
   try {
     await prisma.$transaction(async tx => {
-      await tx.depositPaymentSettings.update({
-        where: { id: "gcash" },
-        data: {
-          qrImageId: qr.id, accountName: "UNCOMMITTED TEST ONLY",
-          accountNumber: "+639000000000", instructions: "TEST ONLY DO NOT PAY",
-          minimumAmount: "100.00", submissionsEnabled: true,
-        },
-      });
+      const input = await checkDepositSetupFlow(tx, original, ownerId, ownerCookie, adminCookie, qr.id, receipt.id, fixture);
       const testDatabase = {
         depositRequest: tx.depositRequest,
         $transaction: async <T>(fn: (client: typeof tx) => Promise<T>) => fn(tx),
       };
-      const input = {
-        amount: "100.00", transactionReference: "TEST-REF-123456",
-        receiptImageId: receipt.id, idempotencyKey: randomUUID(), settingsVersion: original.version,
-      };
-      await assert.rejects(submitDeposit(ownerId, { ...input, amount: "99.99" }, testDatabase), errorStatus(400));
+      await assert.rejects(submitDeposit(ownerId, { ...input, amount: "349.99", idempotencyKey: randomUUID() }, testDatabase), errorStatus(400));
       await assert.rejects(submitDeposit(otherId, input, testDatabase), errorStatus(400));
       await assert.rejects(submitDeposit(ownerId, { ...input, amount: "0" }, testDatabase), errorStatus(400));
       const first = await submitDeposit(ownerId, input, testDatabase);
       assert.equal(first.record.status, "PENDING_VERIFICATION");
       assert.equal(first.record.transactionReference, "TESTREF123456");
-      assert.equal(first.record.amount.toFixed(2), "100.00");
+      assert.equal(first.record.amount.toFixed(2), "350.00");
       const replay = await submitDeposit(ownerId, input, testDatabase);
       assert.equal(replay.record.id, first.record.id);
       assert.equal(replay.replayed, true);
@@ -152,7 +142,7 @@ try {
         type: "APPROVE", data: { ...approvalInput, confirmedPaymentReceived: false },
       }, testDatabase), errorStatus(400));
       await assert.rejects(decideDeposit(adminId, first.record.id, {
-        type: "APPROVE", data: { ...approvalInput, verifiedAmount: "101.00" },
+        type: "APPROVE", data: { ...approvalInput, verifiedAmount: "351.00" },
       }, testDatabase), errorStatus(400));
       await tx.user.update({ where: { id: ownerId }, data: { role: "ADMIN" } });
       await assert.rejects(decideDeposit(ownerId, first.record.id, approve, testDatabase), errorStatus(403));
@@ -161,12 +151,12 @@ try {
       assert.equal(approved.deposit.status, "APPROVED");
       assert.equal(approved.deposit.reviewedById, adminId);
       assert.ok(approved.deposit.approvedAt);
-      assert.equal(approved.deposit.verifiedAmount?.toFixed(2), "100.00");
-      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "100.00");
+      assert.equal(approved.deposit.verifiedAmount?.toFixed(2), "350.00");
+      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "350.00");
       const ledger = await tx.ledgerEntry.findUniqueOrThrow({ where: { depositRequestId: first.record.id } });
       assert.equal(ledger.type, "DEPOSIT_CREDIT");
-      assert.equal(ledger.amount.toFixed(2), "100.00");
-      assert.equal(ledger.balanceAfter.toFixed(2), "100.00");
+      assert.equal(ledger.amount.toFixed(2), "350.00");
+      assert.equal(ledger.balanceAfter.toFixed(2), "350.00");
       assert.equal((await tx.depositDecisionAudit.findUniqueOrThrow({ where: { depositId: first.record.id } })).adminId, adminId);
       assert.equal((await decideDeposit(adminId, first.record.id, approve, testDatabase)).alreadyProcessed, true);
       assert.equal(await tx.ledgerEntry.count({ where: { depositRequestId: first.record.id } }), 1);
@@ -199,20 +189,20 @@ try {
       assert.equal(await tx.ledgerEntry.count({ where: { depositRequestId: toReject.record.id } }), 0);
       assert.equal((await decideDeposit(adminId, toReject.record.id, rejection, testDatabase)).alreadyProcessed, true);
       await assert.rejects(decideDeposit(adminId, toReject.record.id, approve, testDatabase), errorStatus(409));
-      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "100.00");
+      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "350.00");
       const differing = await makePending();
       const verifiedDifference = {
         type: "APPROVE" as const,
-        data: { ...approvalInput, verifiedAmount: "95.00", confirmedAmountDifference: true },
+        data: { ...approvalInput, verifiedAmount: "400.00", confirmedAmountDifference: true },
       };
       const differenceResult = await decideDeposit(adminId, differing.record.id, verifiedDifference, testDatabase);
-      assert.equal(differenceResult.deposit.amount.toFixed(2), "100.00");
-      assert.equal(differenceResult.deposit.verifiedAmount?.toFixed(2), "95.00");
-      assert.equal((await tx.ledgerEntry.findUniqueOrThrow({ where: { depositRequestId: differing.record.id } })).amount.toFixed(2), "95.00");
+      assert.equal(differenceResult.deposit.amount.toFixed(2), "350.00");
+      assert.equal(differenceResult.deposit.verifiedAmount?.toFixed(2), "400.00");
+      assert.equal((await tx.ledgerEntry.findUniqueOrThrow({ where: { depositRequestId: differing.record.id } })).amount.toFixed(2), "400.00");
       assert.equal((await tx.depositDecisionAudit.findUniqueOrThrow({ where: { depositId: differing.record.id } })).amountDifferenceConfirmed, true);
       assert.equal((await decideDeposit(adminId, differing.record.id, verifiedDifference, testDatabase)).alreadyProcessed, true);
       await assert.rejects(decideDeposit(adminId, differing.record.id, {
-        type: "APPROVE", data: { ...verifiedDifference.data, verifiedAmount: "94.00" },
+        type: "APPROVE", data: { ...verifiedDifference.data, verifiedAmount: "399.00" },
       }, testDatabase), errorStatus(409));
       const racing = await makePending();
       const race = await Promise.allSettled([
@@ -222,7 +212,7 @@ try {
       assert.equal(race.filter(r => r.status === "fulfilled" && !r.value.alreadyProcessed).length, 1);
       assert.equal(await tx.ledgerEntry.count({ where: { depositRequestId: racing.record.id } }), 1);
       assert.equal(await tx.depositDecisionAudit.count({ where: { depositId: racing.record.id } }), 1);
-      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "295.00");
+      assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: ownerId } })).availableBalance.toFixed(2), "1100.00");
       // Test the global unique reference constraint without leaving the outer
       // transaction in an aborted state after the deliberate constraint error.
       const unusedImage = await tx.depositImage.create({
@@ -234,7 +224,7 @@ try {
       await tx.$executeRaw`SAVEPOINT duplicate_reference_test`;
       await assert.rejects(tx.depositRequest.create({
         data: {
-          userId: otherId, amount: "100.00", transactionReference: first.record.transactionReference,
+          userId: otherId, amount: "350.00", transactionReference: first.record.transactionReference,
           receiptImageId: unusedImage.id, receiptDigest: unusedImage.digest, idempotencyKey: randomUUID(),
           accountName: "UNCOMMITTED TEST ONLY", accountNumber: "+639000000000", settingsVersion: original.version,
         },

@@ -444,11 +444,15 @@ components:
   schemas:
     DepositPaymentSettings:
       type: object
-      required: [configured, enabled, submissionsEnabled, accountName, accountNumber, instructions, minimumAmount, qrImageId, qrImageUrl, version]
+      required: [configured, enabled, submissionsEnabled, accountDetailsConfirmed, blockingReasons, accountName, accountNumber, instructions, minimumAmount, qrImageId, qrImageUrl, version]
       properties:
         configured: { type: boolean }
         enabled: { type: boolean }
         submissionsEnabled: { type: boolean }
+        accountDetailsConfirmed: { type: boolean }
+        blockingReasons:
+          type: array
+          items: { type: string }
         accountName: { type: string }
         accountNumber: { type: string }
         instructions: { type: string }
@@ -460,6 +464,7 @@ components:
       type: object
       required: [accountName, accountNumber, instructions, minimumAmount, qrImageId, submissionsEnabled, expectedVersion]
       properties:
+        accountDetailsConfirmed: { type: boolean, default: false }
         accountName: { type: string, maxLength: 120 }
         accountNumber: { type: string, maxLength: 32 }
         instructions: { type: string, maxLength: 3000 }

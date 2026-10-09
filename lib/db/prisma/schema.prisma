@@ -172,7 +172,8 @@ model DepositPaymentSettings {
   accountName        String @default("")
   accountNumber      String @default("")
   instructions       String @default("")
-  minimumAmount      Decimal @default(1) @db.Decimal(16, 2)
+  minimumAmount      Decimal @default(350) @db.Decimal(16, 2)
+  accountDetailsConfirmed Boolean @default(false)
   submissionsEnabled Boolean @default(false)
   version            Int @default(0)
   updatedAt          DateTime @updatedAt

@@ -245,6 +245,8 @@ export const GetDepositPaymentSettingsResponse = zod.object({
   "configured": zod.boolean(),
   "enabled": zod.boolean(),
   "submissionsEnabled": zod.boolean(),
+  "accountDetailsConfirmed": zod.boolean(),
+  "blockingReasons": zod.array(zod.string()),
   "accountName": zod.string(),
   "accountNumber": zod.string(),
   "instructions": zod.string(),
@@ -255,6 +257,7 @@ export const GetDepositPaymentSettingsResponse = zod.object({
 })
 
 
+export const updateDepositPaymentSettingsBodyAccountDetailsConfirmedDefault = false;
 export const updateDepositPaymentSettingsBodyAccountNameMax = 120;
 
 export const updateDepositPaymentSettingsBodyAccountNumberMax = 32;
@@ -269,6 +272,7 @@ export const updateDepositPaymentSettingsBodyExpectedVersionMin = 0;
 
 
 export const UpdateDepositPaymentSettingsBody = zod.object({
+  "accountDetailsConfirmed": zod.boolean().default(updateDepositPaymentSettingsBodyAccountDetailsConfirmedDefault),
   "accountName": zod.string().max(updateDepositPaymentSettingsBodyAccountNameMax),
   "accountNumber": zod.string().max(updateDepositPaymentSettingsBodyAccountNumberMax),
   "instructions": zod.string().max(updateDepositPaymentSettingsBodyInstructionsMax),
@@ -282,6 +286,8 @@ export const UpdateDepositPaymentSettingsResponse = zod.object({
   "configured": zod.boolean(),
   "enabled": zod.boolean(),
   "submissionsEnabled": zod.boolean(),
+  "accountDetailsConfirmed": zod.boolean(),
+  "blockingReasons": zod.array(zod.string()),
   "accountName": zod.string(),
   "accountNumber": zod.string(),
   "instructions": zod.string(),

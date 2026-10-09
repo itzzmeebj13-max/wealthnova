@@ -3,8 +3,8 @@ import { prisma } from "@workspace/db";
 import type { DepositRequestInput } from "@workspace/api-zod";
 import { DepositError } from "./private-images";
 
-export async function getPaymentSettings() {
-  return prisma.depositPaymentSettings.upsert({
+export async function getPaymentSettings(database: Pick<PrismaClient, "depositPaymentSettings"> = prisma) {
+  return database.depositPaymentSettings.upsert({
     where: { id: "gcash" }, create: { id: "gcash" }, update: {},
   });
 }
@@ -12,13 +12,31 @@ export async function getPaymentSettings() {
 export function settingsConfigured(settings: DepositPaymentSettings) {
   return Boolean(settings.qrImageId && settings.accountName.trim() &&
     /^\+639\d{9}$/.test(settings.accountNumber) && settings.instructions.trim() &&
-    settings.minimumAmount.gt(0));
+    settings.minimumAmount.gte(350));
+}
+
+export function depositsEnabled(settings: DepositPaymentSettings) {
+  return settingsConfigured(settings) && settings.accountDetailsConfirmed && settings.submissionsEnabled;
+}
+
+export function paymentBlockingReasons(settings: DepositPaymentSettings) {
+  const reasons: string[] = [];
+  if (!settings.qrImageId) reasons.push("Upload the real receiving GCash QR code.");
+  if (!settings.accountName.trim()) reasons.push("Enter the actual GCash account name.");
+  if (!/^\+639\d{9}$/.test(settings.accountNumber)) reasons.push("Enter the actual Philippine GCash account number.");
+  if (!settings.instructions.trim()) reasons.push("Enter deposit instructions.");
+  if (settings.minimumAmount.lt(350)) reasons.push("Set a minimum deposit of at least ₱350.");
+  if (!settings.accountDetailsConfirmed) reasons.push("Confirm the QR code and account details belong to the intended receiving account.");
+  if (!settings.submissionsEnabled) reasons.push("The Admin submission switch is off.");
+  return reasons;
 }
 
 export function mapPaymentSettings(settings: DepositPaymentSettings) {
   const configured = settingsConfigured(settings);
   return {
-    configured, enabled: configured && settings.submissionsEnabled,
+    configured, enabled: depositsEnabled(settings),
+    accountDetailsConfirmed: settings.accountDetailsConfirmed,
+    blockingReasons: paymentBlockingReasons(settings),
     submissionsEnabled: settings.submissionsEnabled,
     accountName: settings.accountName, accountNumber: settings.accountNumber,
     instructions: settings.instructions, minimumAmount: settings.minimumAmount.toFixed(2),
@@ -74,8 +92,8 @@ export async function submitDeposit(userId: string, input: DepositRequestInput, 
         const existing = await tx.depositRequest.findUnique({ where: lookup });
         if (existing) return replay(existing);
         const settings = await tx.depositPaymentSettings.findUnique({ where: { id: "gcash" } });
-        if (!settings || !settingsConfigured(settings) || !settings.submissionsEnabled) {
-          throw new DepositError("Deposit submissions are currently disabled. Please do not send money.", 409);
+        if (!settings || !depositsEnabled(settings)) {
+          throw new DepositError("Manual deposit submissions are disabled or the receiving account details are unconfirmed.", 409);
         }
         if (settings.version !== input.settingsVersion) {
           throw new DepositError("Payment details changed. Please reload and check the current details before submitting.", 409);

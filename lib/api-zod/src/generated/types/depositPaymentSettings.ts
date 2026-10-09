@@ -10,6 +10,8 @@ export interface DepositPaymentSettings {
   configured: boolean;
   enabled: boolean;
   submissionsEnabled: boolean;
+  accountDetailsConfirmed: boolean;
+  blockingReasons: string[];
   accountName: string;
   accountNumber: string;
   instructions: string;

@@ -7,6 +7,7 @@
  */
 
 export interface DepositPaymentSettingsInput {
+  accountDetailsConfirmed?: boolean;
   /** @maxLength 120 */
   accountName: string;
   /** @maxLength 32 */
