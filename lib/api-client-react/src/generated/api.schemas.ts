@@ -115,12 +115,61 @@ export const DashboardSummaryStatus = {
   INVITE_ONLY: 'INVITE_ONLY',
 } as const;
 
+export type ActiveInvestmentStatus = typeof ActiveInvestmentStatus[keyof typeof ActiveInvestmentStatus];
+
+
+export const ActiveInvestmentStatus = {
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface ActiveInvestment {
+  id: string;
+  planId: string;
+  planName: string;
+  /** @pattern ^[0-9]+\.[0-9]{2}$ */
+  principalAmount: string;
+  /**
+     * Informational plan figure; not a guaranteed or automatically credited earning.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  dailyAmount: string;
+  duration: number;
+  startDate: string;
+  endDate: string;
+  daysCompleted: number;
+  daysRemaining: number;
+  /**
+     * Verified earnings credited to this investment only.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  accumulatedAmount: string;
+  status: ActiveInvestmentStatus;
+}
+
 export interface DashboardSummary {
   /** @minimum 0 */
   referralCount: number;
   role: DashboardSummaryRole;
   status: DashboardSummaryStatus;
   createdAt: string;
+  /**
+     * Exact PHP balance formatted with two decimal places.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  availableBalance: string;
+  /**
+     * Sum of non-cancelled investment principals.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  totalInvested: string;
+  /**
+     * Verified earning credits only; scheduled plan figures are not credited automatically.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  totalEarnings: string;
+  activeInvestments: ActiveInvestment[];
 }
 
 export type PlanStatus = typeof PlanStatus[keyof typeof PlanStatus];
@@ -134,11 +183,37 @@ export const PlanStatus = {
 export interface Plan {
   id: string;
   name: string;
-  description: string;
   currency: string;
-  /** @minimum 0 */
-  minimumAmount: number;
+  /** @pattern ^[0-9]+\.[0-9]{2}$ */
+  principalAmount: string;
+  /**
+     * Informational plan figure; not a guaranteed or automatically credited earning.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  dailyAmount: string;
+  /** @minimum 1 */
+  duration: number;
   status: PlanStatus;
+}
+
+export interface InvestmentStartInput {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  planId: string;
+  /**
+     * @minLength 16
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface InvestmentStartResult {
+  investment: ActiveInvestment;
+  /** @pattern ^[0-9]+\.[0-9]{2}$ */
+  availableBalance: string;
+  replayed: boolean;
 }
 
 export interface DepositAvailability {

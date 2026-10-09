@@ -6,12 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activeInvestment';
+export * from './activeInvestmentStatus';
 export * from './dashboardSummary';
 export * from './dashboardSummaryRole';
 export * from './dashboardSummaryStatus';
 export * from './depositAvailability';
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './investmentStartInput';
+export * from './investmentStartResult';
 export * from './loginInput';
 export * from './plan';
 export * from './planStatus';

@@ -10,9 +10,15 @@ import type { PlanStatus } from './planStatus';
 export interface Plan {
   id: string;
   name: string;
-  description: string;
   currency: string;
-  /** @minimum 0 */
-  minimumAmount: number;
+  /** @pattern ^[0-9]+\.[0-9]{2}$ */
+  principalAmount: string;
+  /**
+     * Informational plan figure; not a guaranteed or automatically credited earning.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  dailyAmount: string;
+  /** @minimum 1 */
+  duration: number;
   status: PlanStatus;
 }

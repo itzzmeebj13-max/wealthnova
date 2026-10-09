@@ -5,6 +5,7 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+import type { ActiveInvestment } from './activeInvestment';
 import type { DashboardSummaryRole } from './dashboardSummaryRole';
 import type { DashboardSummaryStatus } from './dashboardSummaryStatus';
 
@@ -14,4 +15,20 @@ export interface DashboardSummary {
   role: DashboardSummaryRole;
   status: DashboardSummaryStatus;
   createdAt: Date;
+  /**
+     * Exact PHP balance formatted with two decimal places.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  availableBalance: string;
+  /**
+     * Sum of non-cancelled investment principals.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  totalInvested: string;
+  /**
+     * Verified earning credits only; scheduled plan figures are not credited automatically.
+     * @pattern ^[0-9]+\.[0-9]{2}$
+     */
+  totalEarnings: string;
+  activeInvestments: ActiveInvestment[];
 }

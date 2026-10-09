@@ -137,29 +137,54 @@ export const GetMyReferralsResponse = zod.object({
  */
 export const getDashboardSummaryResponseReferralCountMin = 0;
 
+export const getDashboardSummaryResponseAvailableBalanceRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getDashboardSummaryResponseTotalInvestedRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getDashboardSummaryResponseTotalEarningsRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getDashboardSummaryResponseActiveInvestmentsItemPrincipalAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getDashboardSummaryResponseActiveInvestmentsItemDailyAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getDashboardSummaryResponseActiveInvestmentsItemAccumulatedAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
 
 
 export const GetDashboardSummaryResponse = zod.object({
   "referralCount": zod.number().int().min(getDashboardSummaryResponseReferralCountMin),
   "role": zod.enum(['USER', 'ADMIN']),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'INVITE_ONLY']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "availableBalance": zod.string().regex(getDashboardSummaryResponseAvailableBalanceRegExp).describe('Exact PHP balance formatted with two decimal places.'),
+  "totalInvested": zod.string().regex(getDashboardSummaryResponseTotalInvestedRegExp).describe('Sum of non-cancelled investment principals.'),
+  "totalEarnings": zod.string().regex(getDashboardSummaryResponseTotalEarningsRegExp).describe('Verified earning credits only; scheduled plan figures are not credited automatically.'),
+  "activeInvestments": zod.array(zod.object({
+  "id": zod.string(),
+  "planId": zod.string(),
+  "planName": zod.string(),
+  "principalAmount": zod.string().regex(getDashboardSummaryResponseActiveInvestmentsItemPrincipalAmountRegExp),
+  "dailyAmount": zod.string().regex(getDashboardSummaryResponseActiveInvestmentsItemDailyAmountRegExp).describe('Informational plan figure; not a guaranteed or automatically credited earning.'),
+  "duration": zod.number().int(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "daysCompleted": zod.number().int(),
+  "daysRemaining": zod.number().int(),
+  "accumulatedAmount": zod.string().regex(getDashboardSummaryResponseActiveInvestmentsItemAccumulatedAmountRegExp).describe('Verified earnings credited to this investment only.'),
+  "status": zod.enum(['ACTIVE', 'COMPLETED', 'CANCELLED'])
+}))
 })
 
 
 /**
  * @summary List currently configured plans
  */
-export const getPlansResponseMinimumAmountMin = 0;
+export const getPlansResponsePrincipalAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getPlansResponseDailyAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
 
 
 
 export const GetPlansResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "description": zod.string(),
   "currency": zod.string(),
-  "minimumAmount": zod.number().min(getPlansResponseMinimumAmountMin),
+  "principalAmount": zod.string().regex(getPlansResponsePrincipalAmountRegExp),
+  "dailyAmount": zod.string().regex(getPlansResponseDailyAmountRegExp).describe('Informational plan figure; not a guaranteed or automatically credited earning.'),
+  "duration": zod.number().int().min(1),
   "status": zod.enum(['AVAILABLE', 'UNAVAILABLE'])
 })
 export const GetPlansResponse = zod.array(GetPlansResponseItem)
@@ -171,6 +196,48 @@ export const GetPlansResponse = zod.array(GetPlansResponseItem)
 export const GetDepositStatusResponse = zod.object({
   "enabled": zod.boolean(),
   "message": zod.string()
+})
+
+
+/**
+ * The server resolves principal and daily values from the selected plan. Amounts are never accepted from the client.
+ * @summary Start an investment using the authenticated member's available balance
+ */
+export const startInvestmentBodyPlanIdMax = 64;
+
+export const startInvestmentBodyIdempotencyKeyMin = 16;
+export const startInvestmentBodyIdempotencyKeyMax = 128;
+
+
+
+export const StartInvestmentBody = zod.object({
+  "planId": zod.string().min(1).max(startInvestmentBodyPlanIdMax),
+  "idempotencyKey": zod.string().min(startInvestmentBodyIdempotencyKeyMin).max(startInvestmentBodyIdempotencyKeyMax)
+})
+
+export const startInvestmentResponseInvestmentPrincipalAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const startInvestmentResponseInvestmentDailyAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const startInvestmentResponseInvestmentAccumulatedAmountRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const startInvestmentResponseAvailableBalanceRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+
+
+export const StartInvestmentResponse = zod.object({
+  "investment": zod.object({
+  "id": zod.string(),
+  "planId": zod.string(),
+  "planName": zod.string(),
+  "principalAmount": zod.string().regex(startInvestmentResponseInvestmentPrincipalAmountRegExp),
+  "dailyAmount": zod.string().regex(startInvestmentResponseInvestmentDailyAmountRegExp).describe('Informational plan figure; not a guaranteed or automatically credited earning.'),
+  "duration": zod.number().int(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "daysCompleted": zod.number().int(),
+  "daysRemaining": zod.number().int(),
+  "accumulatedAmount": zod.string().regex(startInvestmentResponseInvestmentAccumulatedAmountRegExp).describe('Verified earnings credited to this investment only.'),
+  "status": zod.enum(['ACTIVE', 'COMPLETED', 'CANCELLED'])
+}),
+  "availableBalance": zod.string().regex(startInvestmentResponseAvailableBalanceRegExp),
+  "replayed": zod.boolean()
 })
 
 

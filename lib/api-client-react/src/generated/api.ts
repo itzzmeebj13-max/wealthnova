@@ -24,6 +24,8 @@ import type {
   DepositAvailability,
   ErrorResponse,
   HealthStatus,
+  InvestmentStartInput,
+  InvestmentStartResult,
   LoginInput,
   Plan,
   ReferralCodeInput,
@@ -861,4 +863,93 @@ export function useGetDepositStatus<TData = Awaited<ReturnType<typeof getDeposit
 
 
 
+
+export const getStartInvestmentUrl = () => {
+
+
+
+
+  return `/api/investments`
+}
+
+/**
+ * The server resolves principal and daily values from the selected plan. Amounts are never accepted from the client.
+ * @summary Start an investment using the authenticated member's available balance
+ */
+export const startInvestment = async (investmentStartInput: InvestmentStartInput, options?: Parameters<typeof customFetch>[1]): Promise<InvestmentStartResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<InvestmentStartResult>(getStartInvestmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(investmentStartInput)
+  }
+);}
+
+
+
+
+
+export const getStartInvestmentMutationKey = () => ['startInvestment'] as const;
+
+export const getStartInvestmentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startInvestment>>, TError,StartInvestmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startInvestment>>, TError,StartInvestmentMutationVariables, TContext> => {
+
+const mutationKey = getStartInvestmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startInvestment>>, StartInvestmentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startInvestment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartInvestmentMutationResult = NonNullable<Awaited<ReturnType<typeof startInvestment>>>
+    export type StartInvestmentMutationBody = BodyType<InvestmentStartInput>
+    export type StartInvestmentMutationError = ErrorType<ErrorResponse>
+    export type StartInvestmentMutationVariables = {data: BodyType<InvestmentStartInput>}
+
+    /**
+ * @summary Start an investment using the authenticated member's available balance
+ */
+export const useStartInvestment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startInvestment>>, TError,StartInvestmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startInvestment>>,
+        TError,
+        StartInvestmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartInvestmentMutationOptions(options));
+    }
 

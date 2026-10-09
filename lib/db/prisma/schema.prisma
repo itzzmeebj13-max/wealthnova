@@ -18,6 +18,18 @@ enum UserStatus {
   INVITE_ONLY
 }
 
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum LedgerEntryType {
+  DEPOSIT_CREDIT
+  INVESTMENT_DEBIT
+  VERIFIED_EARNING_CREDIT
+}
+
 model User {
   id           String      @id @default(cuid())
   mobileNumber String      @unique
@@ -32,6 +44,9 @@ model User {
   referrer  User?     @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: Restrict)
   referrals User[]    @relation("UserReferrals")
   sessions  Session[]
+  wallet    Wallet?
+  investments Investment[]
+  ledgerEntries LedgerEntry[]
 
   @@index([referredBy])
 }
@@ -47,4 +62,68 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model Wallet {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  availableBalance Decimal  @default(0) @db.Decimal(16, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model InvestmentPlan {
+  id              String   @id
+  name            String
+  principalAmount Decimal  @db.Decimal(16, 2)
+  dailyAmount     Decimal  @db.Decimal(16, 2)
+  duration        Int
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  investments Investment[]
+}
+
+model Investment {
+  id                String           @id @default(cuid())
+  userId            String
+  planId            String
+  principalAmount   Decimal          @db.Decimal(16, 2)
+  dailyAmount       Decimal          @db.Decimal(16, 2)
+  duration          Int
+  startDate         DateTime
+  endDate           DateTime
+  accumulatedAmount Decimal          @default(0) @db.Decimal(16, 2)
+  status            InvestmentStatus @default(ACTIVE)
+  idempotencyKey    String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan         InvestmentPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, status])
+  @@index([status, endDate])
+}
+
+model LedgerEntry {
+  id                String          @id @default(cuid())
+  userId            String
+  investmentId      String?
+  reference         String          @unique
+  type              LedgerEntryType
+  amount            Decimal         @db.Decimal(16, 2)
+  balanceAfter      Decimal         @db.Decimal(16, 2)
+  createdAt         DateTime        @default(now())
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  investment Investment?  @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([investmentId, type])
 }

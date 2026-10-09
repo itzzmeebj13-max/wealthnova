@@ -20,6 +20,8 @@ tags:
     description: Available plans
   - name: deposits
     description: Deposit availability
+  - name: investments
+    description: Member investments and portfolio totals
 paths:
   /healthz:
     get:
@@ -198,6 +200,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DepositAvailability"
+  /investments:
+    post:
+      operationId: startInvestment
+      tags: [investments]
+      summary: Start an investment using the authenticated member's available balance
+      description: The server resolves principal and daily values from the selected plan. Amounts are never accepted from the client.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvestmentStartInput"
+      responses:
+        "201":
+          description: Investment created and principal debited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvestmentStartResult"
+        "200":
+          description: An idempotent replay of the original investment request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvestmentStartResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Plan unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Insufficient balance or idempotency key conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -313,7 +364,59 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [referralCount, role, status, createdAt]
+        availableBalance:
+          type: string
+          description: Exact PHP balance formatted with two decimal places.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        totalInvested:
+          type: string
+          description: Sum of non-cancelled investment principals.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        totalEarnings:
+          type: string
+          description: Verified earning credits only; scheduled plan figures are not credited automatically.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        activeInvestments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActiveInvestment"
+      required: [referralCount, role, status, createdAt, availableBalance, totalInvested, totalEarnings, activeInvestments]
+    ActiveInvestment:
+      type: object
+      properties:
+        id:
+          type: string
+        planId:
+          type: string
+        planName:
+          type: string
+        principalAmount:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        dailyAmount:
+          type: string
+          description: Informational plan figure; not a guaranteed or automatically credited earning.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        duration:
+          type: integer
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        daysCompleted:
+          type: integer
+        daysRemaining:
+          type: integer
+        accumulatedAmount:
+          type: string
+          description: Verified earnings credited to this investment only.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, CANCELLED]
+      required: [id, planId, planName, principalAmount, dailyAmount, duration, startDate, endDate, daysCompleted, daysRemaining, accumulatedAmount, status]
     Plan:
       type: object
       properties:
@@ -321,17 +424,45 @@ components:
           type: string
         name:
           type: string
-        description:
-          type: string
         currency:
           type: string
-        minimumAmount:
-          type: number
-          minimum: 0
+        principalAmount:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        dailyAmount:
+          type: string
+          description: Informational plan figure; not a guaranteed or automatically credited earning.
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        duration:
+          type: integer
+          minimum: 1
         status:
           type: string
           enum: [AVAILABLE, UNAVAILABLE]
-      required: [id, name, description, currency, minimumAmount, status]
+      required: [id, name, currency, principalAmount, dailyAmount, duration, status]
+    InvestmentStartInput:
+      type: object
+      properties:
+        planId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        idempotencyKey:
+          type: string
+          minLength: 16
+          maxLength: 128
+      required: [planId, idempotencyKey]
+    InvestmentStartResult:
+      type: object
+      properties:
+        investment:
+          $ref: "#/components/schemas/ActiveInvestment"
+        availableBalance:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+        replayed:
+          type: boolean
+      required: [investment, availableBalance, replayed]
     DepositAvailability:
       type: object
       properties:
