@@ -11,7 +11,7 @@ WealthNova is a mobile-first member finance portal with phone-based accounts, re
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run prisma:generate` — generate the Prisma client
 - `pnpm --filter @workspace/db run db:push` — sync the development PostgreSQL schema
-- `pnpm --filter @workspace/db run db:seed` — ensure the disabled bootstrap inviter exists
+- `pnpm --filter @workspace/db run db:seed` — ensure the disabled bootstrap inviter and seven investment plans exist
 - Required env: `DATABASE_URL`, `SESSION_SECRET` (at least 32 characters)
 
 ## Stack
@@ -40,7 +40,10 @@ WealthNova is a mobile-first member finance portal with phone-based accounts, re
 ## Product
 
 - Member pages: Home, Plans, Deposit, Invite, and Account. Registration and login are separate routes.
-- No configured plans are seeded; the Plans page uses a real empty state until plans are supplied.
+- Seven configured investment plans are seeded with 25-day durations.
+- Available balance is funded by verified deposits only; deposits stay unavailable until a real provider is connected. Do not seed member funds.
+- Earnings and investment accumulated amounts represent verified credits only, not automatic daily accrual. The daily plan figures are informational and are not guaranteed returns.
+- Starting investments uses server-owned plan amounts, decimal arithmetic, a serializable database transaction, conditional debit, and a per-member idempotency key.
 
 ## User preferences
 

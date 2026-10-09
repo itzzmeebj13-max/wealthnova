@@ -184,10 +184,13 @@ export async function startInvestment(input: {
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2034" &&
-        attempt < 2
+        error.code === "P2034"
       ) {
-        continue;
+        if (attempt < 2) continue;
+        throw new InvestmentOperationError(
+          "The balance is being updated by another request. Please retry safely.",
+          409,
+        );
       }
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

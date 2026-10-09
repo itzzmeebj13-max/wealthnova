@@ -21,6 +21,7 @@ import {
   LogOut,
   ShieldCheck,
   UserRound,
+  Wallet,
   UsersRound,
 } from 'lucide-react';
 import {
@@ -29,6 +30,9 @@ import {
   useGetDashboardSummary,
   useGetMyReferrals,
   useGetPlans,
+  useStartInvestment,
+  getGetDashboardSummaryQueryKey,
+  getGetPlansQueryKey,
   useGetDepositStatus,
   useLogin,
   useLogout,
@@ -42,13 +46,14 @@ import {
   PHILIPPINE_MOBILE_VALIDATION_MESSAGE,
 } from '@workspace/api-zod';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import logoPath from '@assets/file_00000000ec5c820bb3111b380eeb2b8a_1791465952512.png';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: { queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: true } },
 });
 
 const navItems = [
@@ -70,7 +75,7 @@ function errorMessage(error: unknown, fallback: string) {
 function Brand() {
   return (
     <div className="wn-brand" data-testid="brand-wealthnova">
-      <span className="wn-brand-mark"><Leaf size={19} strokeWidth={2.4} /></span>
+      <img src={logoPath} alt="" className="wn-brand-logo" />
       <span>wealthnova</span>
     </div>
   );
@@ -171,49 +176,91 @@ function DashboardPage() {
   return <Protected active="/" title="Home"><DashboardContent /></Protected>;
 }
 
+const FUNDING_NOTE = 'Verified deposits are the only funding source. No deposit provider is configured yet, so available balances remain at zero and no plan can be funded.';
+const ACCOUNTING_NOTE = 'Daily plan figures are informational only. They are not guaranteed and are not credited automatically. Only verified earning credits count as earnings.';
+
+function php(value: string) {
+  return `₱${Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function DashboardContent() {
   const summary = useGetDashboardSummary();
   const referrals = useGetMyReferrals();
   const [, setLocation] = useLocation();
   const { data: user } = useGetCurrentUser();
-  if (summary.isLoading) return <><PageHead eyebrow="Your overview" title="A clearer view of your account." description="The essentials, at a glance. Your membership and referral details are always here when you need them." /><div className="wn-loading" data-testid="loading-dashboard"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
-  if (summary.isError) return <><PageHead eyebrow="Your overview" title="A clearer view of your account." description="The essentials, at a glance. Your membership and referral details are always here when you need them." /><QueryError message={errorMessage(summary.error, 'Please try loading your account summary again.')} onRetry={() => void summary.refetch()} testId="error-dashboard" /></>;
-  if (!summary.data) return <><PageHead eyebrow="Your overview" title="A clearer view of your account." description="The essentials, at a glance. Your membership and referral details are always here when you need them." /><div className="wn-loading" data-testid="loading-dashboard"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
+  const head = <PageHead eyebrow="Your overview" title="A clearer view of your account." description="Balances shown here come only from verified ledger entries. Your membership and referral details are always here when you need them." />;
+  if (summary.isError) return <>{head}<QueryError message={errorMessage(summary.error, 'Please try loading your account summary again.')} onRetry={() => void summary.refetch()} testId="error-dashboard" /></>;
+  if (summary.isLoading || !summary.data) return <>{head}<div className="wn-loading" data-testid="loading-dashboard"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
+  const s = summary.data;
+  const zeroFunds = Number(s.availableBalance) <= 0;
   return (
     <>
-      <PageHead eyebrow="Your overview" title="A clearer view of your account." description="The essentials, at a glance. Your membership and referral details are always here when you need them." />
+      {head}
       <div className="wn-grid wn-fade">
-            <section className="wn-card wn-hero-card" data-testid="card-welcome">
-              <div className="wn-hero-kicker">Member since {new Date(summary.data.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>
-              <h2>Good to have you here.</h2>
-              <p>Your WealthNova account is ready. Find your referral details and current member services below.</p>
-              <div className="wn-hero-foot">A MORE PERSONAL FINANCE PORTAL</div>
-            </section>
-            <section className="wn-card wn-stat-card" data-testid="card-referral-count">
-              <div><div className="wn-card-label">People you’ve invited</div>
-                <div className="wn-stat" data-testid="data-referral-count">{summary.data.referralCount}</div>
-              </div>
-              <Link href="/invite" className="wn-link" data-testid="link-dashboard-invite">Your invite details <ChevronRight size={15} /></Link>
-            </section>
-            <section className="wn-card wn-wide" data-testid="card-account-summary">
-              <div className="wn-panel-head"><h2>Account at a glance</h2><BadgeCheck size={20} color="#547762" /></div>
-              <div className="wn-summary-list">
-                <div className="wn-summary-row"><span>Membership status</span><strong data-testid="status-account">{summary.data.status.replaceAll('_', ' ')}</strong></div>
-                <div className="wn-summary-row"><span>Account type</span><strong data-testid="data-role">{summary.data.role === 'ADMIN' ? 'Administrator' : 'Member'}</strong></div>
-                <div className="wn-summary-row"><span>Mobile number</span><strong data-testid="data-mobile">{user?.mobileNumber ?? '—'}</strong></div>
-                <div className="wn-summary-row"><span>Member since</span><strong data-testid="data-member-since">{new Date(summary.data.createdAt).toLocaleDateString()}</strong></div>
-              </div>
-            </section>
-            <section className="wn-card wn-narrow" data-testid="card-referral-preview">
-              <div className="wn-panel-head"><h2>Your circle</h2><Gift size={20} color="#987c4c" /></div>
-              {referrals.isLoading ? <div className="wn-skeleton" /> : referrals.isError ?
-                <div className="wn-auth-warning" data-testid="error-referral-preview">{errorMessage(referrals.error, 'Referral details are temporarily unavailable.')}</div> : referrals.data ?
-                  <div className="wn-callout">
-                    <div className="wn-callout-icon"><UsersRound size={18} /></div>
-                    <div><strong data-testid="data-referral-summary">{referrals.data.referralCount} invited</strong><p>Share your personal invite when someone is ready to join.</p></div>
-                  </div> : <div className="wn-auth-warning" data-testid="error-referral-preview">Referral details are temporarily unavailable.</div>}
-              <button className="wn-button wn-button-quiet" onClick={() => setLocation('/invite')} style={{ marginTop: 18 }} data-testid="button-open-invites">View invite details <ArrowRight size={15} /></button>
-            </section>
+        <section className="wn-card wn-hero-card" data-testid="card-welcome">
+          <img src={logoPath} alt="WealthNova" className="wn-logo-hero" data-testid="img-logo-home" />
+          <div className="wn-hero-kicker">Available balance</div>
+          <h2 data-testid="data-available-balance">{php(s.availableBalance)}</h2>
+          <p data-testid="text-funding-limitation">{FUNDING_NOTE}</p>
+          <div className="wn-hero-foot">Member since {new Date(s.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>
+        </section>
+        <section className="wn-card wn-stat-card" data-testid="card-referral-count">
+          <div><div className="wn-card-label">People you’ve invited</div>
+            <div className="wn-stat" data-testid="data-referral-count">{s.referralCount}</div>
+          </div>
+          <Link href="/invite" className="wn-link" data-testid="link-dashboard-invite">Your invite details <ChevronRight size={15} /></Link>
+        </section>
+        <section className="wn-card wn-half" data-testid="card-total-invested">
+          <div className="wn-card-label">Total invested</div>
+          <div className="wn-stat" data-testid="data-total-invested">{php(s.totalInvested)}</div>
+          <p className="wn-stat-caption">Sum of non-cancelled plan principals.</p>
+        </section>
+        <section className="wn-card wn-half" data-testid="card-total-earnings">
+          <div className="wn-card-label">Verified earnings</div>
+          <div className="wn-stat" data-testid="data-total-earnings">{php(s.totalEarnings)}</div>
+          <p className="wn-stat-caption">Verified earning credits only.</p>
+        </section>
+        <section className="wn-card wn-full" data-testid="card-active-investments">
+           <div className="wn-panel-head"><h2>Active investments <span data-testid="data-active-investment-count">({s.activeInvestments.length})</span></h2><Link href="/plans" className="wn-link" data-testid="link-view-plans">View plans <ChevronRight size={15} /></Link></div>
+          {s.activeInvestments.length === 0 ?
+            <div className="wn-empty" data-testid="empty-investments"><div className="wn-empty-mark"><Wallet size={21} /></div><h3>No active investments</h3><p>{zeroFunds ? 'Your balance is zero and funding is not available yet, so there is nothing to start.' : 'Review plan terms to start one.'}</p></div> :
+            <div className="wn-inv-list">
+              {s.activeInvestments.map(inv => {
+                const pct = inv.duration > 0 ? Math.min(100, Math.round((inv.daysCompleted / inv.duration) * 100)) : 0;
+                return <article className="wn-inv" key={inv.id} data-testid={`card-investment-${inv.id}`}>
+                  <div className="wn-panel-head" style={{ marginBottom: 12 }}><h3 data-testid={`data-investment-name-${inv.id}`}>{inv.planName}</h3><span className="wn-status-pill" data-testid={`status-investment-${inv.id}`}>{inv.status.toLowerCase()}</span></div>
+                  <div className="wn-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${pct}%` }} /></div>
+                  <div className="wn-summary-row"><span>Principal</span><strong data-testid={`data-investment-principal-${inv.id}`}>{php(inv.principalAmount)}</strong></div>
+                  <div className="wn-summary-row"><span>Plan figure per day (informational)</span><strong data-testid={`data-investment-daily-${inv.id}`}>{php(inv.dailyAmount)}</strong></div>
+                  <div className="wn-summary-row"><span>Days completed</span><strong data-testid={`data-investment-days-${inv.id}`}>{inv.daysCompleted} of {inv.duration}</strong></div>
+                  <div className="wn-summary-row"><span>Days remaining</span><strong data-testid={`data-investment-remaining-${inv.id}`}>{inv.daysRemaining}</strong></div>
+                  <div className="wn-summary-row"><span>Starts</span><strong data-testid={`data-investment-start-${inv.id}`}>{new Date(inv.startDate).toLocaleDateString()}</strong></div>
+                  <div className="wn-summary-row"><span>Ends</span><strong data-testid={`data-investment-end-${inv.id}`}>{new Date(inv.endDate).toLocaleDateString()}</strong></div>
+                  <div className="wn-summary-row"><span>Verified earnings credited</span><strong data-testid={`data-investment-accumulated-${inv.id}`}>{php(inv.accumulatedAmount)}</strong></div>
+                </article>;
+              })}
+            </div>}
+          <p className="wn-helper" style={{ marginTop: 14 }} data-testid="text-accounting-note">{ACCOUNTING_NOTE}</p>
+        </section>
+        <section className="wn-card wn-wide" data-testid="card-account-summary">
+          <div className="wn-panel-head"><h2>Account at a glance</h2><BadgeCheck size={20} color="#547762" /></div>
+          <div className="wn-summary-list">
+            <div className="wn-summary-row"><span>Membership status</span><strong data-testid="status-account">{s.status.replaceAll('_', ' ')}</strong></div>
+            <div className="wn-summary-row"><span>Account type</span><strong data-testid="data-role">{s.role === 'ADMIN' ? 'Administrator' : 'Member'}</strong></div>
+            <div className="wn-summary-row"><span>Mobile number</span><strong data-testid="data-mobile">{user?.mobileNumber ?? '—'}</strong></div>
+            <div className="wn-summary-row"><span>Member since</span><strong data-testid="data-member-since">{new Date(s.createdAt).toLocaleDateString()}</strong></div>
+          </div>
+        </section>
+        <section className="wn-card wn-narrow" data-testid="card-referral-preview">
+          <div className="wn-panel-head"><h2>Your circle</h2><Gift size={20} color="#987c4c" /></div>
+          {referrals.isLoading ? <div className="wn-skeleton" /> : referrals.isError ?
+            <div className="wn-auth-warning" data-testid="error-referral-preview">{errorMessage(referrals.error, 'Referral details are temporarily unavailable.')}</div> : referrals.data ?
+              <div className="wn-callout">
+                <div className="wn-callout-icon"><UsersRound size={18} /></div>
+                <div><strong data-testid="data-referral-summary">{referrals.data.referralCount} invited</strong><p>Share your personal invite when someone is ready to join.</p></div>
+              </div> : <div className="wn-auth-warning" data-testid="error-referral-preview">Referral details are temporarily unavailable.</div>}
+          <button className="wn-button wn-button-quiet" onClick={() => setLocation('/invite')} style={{ marginTop: 18 }} data-testid="button-open-invites">View invite details <ArrowRight size={15} /></button>
+        </section>
       </div>
     </>
   );
@@ -223,21 +270,73 @@ function PlansPage() {
   return <Protected active="/plans" title="Plans"><PlansContent /></Protected>;
 }
 
+function newKey() {
+  return `wn-${crypto.randomUUID()}`;
+}
+
 function PlansContent() {
   const plans = useGetPlans();
-  if (plans.isLoading) return <><PageHead eyebrow="Available to members" title="Plans, without the guesswork." description="Review the options currently configured for your account. Availability and details come directly from WealthNova." /><div className="wn-loading" data-testid="loading-plans"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
-  if (plans.isError) return <><PageHead eyebrow="Available to members" title="Plans, without the guesswork." description="Review the options currently configured for your account. Availability and details come directly from WealthNova." /><QueryError message={errorMessage(plans.error, 'Plan information is temporarily unavailable.')} onRetry={() => void plans.refetch()} testId="error-plans" /></>;
-  if (!plans.data) return <><PageHead eyebrow="Available to members" title="Plans, without the guesswork." description="Review the options currently configured for your account. Availability and details come directly from WealthNova." /><div className="wn-loading" data-testid="loading-plans"><div className="wn-skeleton" /></div></>;
+  const summary = useGetDashboardSummary();
+  const start = useStartInvestment();
+  const client = useQueryClient();
+  const keys = useRef<Record<string, string>>({});
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [activePlan, setActivePlan] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const head = <PageHead eyebrow="Available to members" title="Plans, without the guesswork." description="Review fixed 25-day plan terms. The server sets every amount; nothing here is guaranteed." />;
+  if (plans.isError) return <>{head}<QueryError message={errorMessage(plans.error, 'Plan information is temporarily unavailable.')} onRetry={() => void plans.refetch()} testId="error-plans" /></>;
+  if (plans.isLoading || !plans.data) return <>{head}<div className="wn-loading" data-testid="loading-plans"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
+  const balance = summary.data?.availableBalance;
+  const submit = (planId: string) => {
+    if (start.isPending) return;
+    setNotice(null);
+    setActivePlan(planId);
+    keys.current[planId] ??= newKey();
+    start.mutate({ data: { planId, idempotencyKey: keys.current[planId] } }, {
+      onSuccess: result => {
+        delete keys.current[planId];
+        setConfirming(null);
+        setNotice({ kind: 'ok', text: result.replayed ? 'This investment was already started; no second charge was made.' : `${result.investment.planName} started. Available balance is now ${php(result.availableBalance)}.` });
+        void client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        void client.invalidateQueries({ queryKey: getGetPlansQueryKey() });
+      },
+      onError: error => {
+        const status = (error as { status?: number } | null)?.status;
+        if (typeof status === 'number' && status >= 400 && status < 500) delete keys.current[planId];
+        setNotice({ kind: 'error', text: errorMessage(error, 'We couldn’t start this plan. You can try again safely.') });
+      },
+    });
+  };
   return <>
-    <PageHead eyebrow="Available to members" title="Plans, without the guesswork." description="Review the options currently configured for your account. Availability and details come directly from WealthNova." />
-    {plans.data.length === 0 ? <div className="wn-card" data-testid="empty-plans"><div className="wn-empty"><div className="wn-empty-mark"><HandCoins size={21} /></div><h3>No plans are configured yet</h3><p>There aren’t any plans available to display right now. Check back here for current options.</p></div></div> :
-          <div className="wn-grid wn-fade" data-testid="list-plans">
-            {plans.data.map(plan => <article className="wn-card wn-plan-card" key={plan.id} data-testid={`card-plan-${plan.id}`}>
-              <div className="wn-panel-head"><h2 data-testid={`data-plan-name-${plan.id}`}>{plan.name}</h2><span className="wn-status-pill" data-testid={`status-plan-${plan.id}`}>{plan.status.toLowerCase()}</span></div>
-              <p data-testid={`data-plan-description-${plan.id}`}>{plan.description}</p>
-              <div className="wn-plan-meta"><span>Minimum amount</span><strong data-testid={`data-plan-minimum-${plan.id}`}>{plan.currency} {plan.minimumAmount.toLocaleString()}</strong></div>
-            </article>)}
-          </div>}
+    {head}
+    <div className="wn-auth-warning" style={{ marginBottom: 18 }} data-testid="text-funding-limitation"><strong>Funding is not available yet.</strong> {FUNDING_NOTE}</div>
+    <div className="wn-summary-row" style={{ borderTop: 0, marginBottom: 6 }}><span>Your available balance</span><strong data-testid="data-plans-balance">{balance ? php(balance) : '—'}</strong></div>
+    {notice && <div className={`wn-feedback${notice.kind === 'error' ? ' error' : ''}`} role={notice.kind === 'error' ? 'alert' : 'status'} data-testid={notice.kind === 'error' ? 'error-start-investment' : 'status-start-investment'}>{notice.text}</div>}
+    {plans.data.length === 0 ? <div className="wn-card" data-testid="empty-plans"><div className="wn-empty"><div className="wn-empty-mark"><HandCoins size={21} /></div><h3>No plans are configured yet</h3><p>There aren’t any plans available to display right now.</p></div></div> :
+      <div className="wn-grid wn-fade" data-testid="list-plans">
+        {plans.data.map(plan => {
+          const available = plan.status === 'AVAILABLE';
+          const funded = balance !== undefined && Number(balance) >= Number(plan.principalAmount);
+          const pending = start.isPending && activePlan === plan.id;
+          return <article className="wn-card wn-plan-card" key={plan.id} data-testid={`card-plan-${plan.id}`}>
+            <div className="wn-panel-head"><h2 data-testid={`data-plan-name-${plan.id}`}>{plan.name}</h2><span className="wn-status-pill" data-testid={`status-plan-${plan.id}`}>{plan.status.toLowerCase()}</span></div>
+             <div className="wn-summary-row"><span>Investment amount</span><strong data-testid={`data-plan-principal-${plan.id}`}>{php(plan.principalAmount)}</strong></div>
+             <div className="wn-summary-row"><span>Daily plan figure (informational)</span><strong data-testid={`data-plan-daily-${plan.id}`}>{php(plan.dailyAmount)}</strong></div>
+            <div className="wn-summary-row"><span>Duration</span><strong data-testid={`data-plan-duration-${plan.id}`}>{plan.duration} days</strong></div>
+            {confirming === plan.id ? <div className="wn-confirm" data-testid={`panel-confirm-${plan.id}`}>
+              <p>Start {plan.name}? The server will move the principal from your verified available balance. Daily figures are not guaranteed or credited automatically.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="wn-button" onClick={() => submit(plan.id)} disabled={pending} data-testid={`button-confirm-investment-${plan.id}`}>{pending && <LoaderCircle className="animate-spin" size={16} />}{pending ? 'Starting' : 'Confirm'}</button>
+                <button className="wn-button wn-button-quiet" onClick={() => setConfirming(null)} disabled={pending} data-testid={`button-cancel-investment-${plan.id}`}>Cancel</button>
+              </div>
+            </div> : <>
+              <button className="wn-button" style={{ marginTop: 16 }} onClick={() => { setNotice(null); setConfirming(plan.id); }} disabled={!available || !funded || start.isPending} data-testid={`button-start-investment-${plan.id}`}>Start Investment</button>
+              {(!available || !funded) && <p className="wn-helper" style={{ marginTop: 10 }} data-testid={`text-start-disabled-${plan.id}`}>{!available ? 'This plan is currently unavailable.' : 'Your verified available balance does not cover this principal. Funding is not available yet.'}</p>}
+            </>}
+          </article>;
+        })}
+      </div>}
+    <p className="wn-helper" style={{ marginTop: 18 }} data-testid="text-accounting-note">{ACCOUNTING_NOTE}</p>
   </>;
 }
 
@@ -329,7 +428,7 @@ function AccountContent() {
   const [, setLocation] = useLocation();
   const signOut = () => logout.mutate(undefined, {
     onSuccess: () => {
-      queryClientInstance.removeQueries({ queryKey: getGetCurrentUserQueryKey() });
+      queryClientInstance.clear();
       setLocation('/login');
     },
   });
@@ -404,6 +503,7 @@ function LoginPage() {
     }
     login.mutate({ data: { mobileNumber, password: values.password } }, {
       onSuccess: (user: SessionUser) => {
+        client.clear();
         client.setQueryData(getGetCurrentUserQueryKey(), user);
         setLocation('/');
       },
@@ -479,6 +579,7 @@ function RegisterPage() {
     }
     register.mutate({ data: { mobileNumber, password: values.password, referralCode: values.referralCode.trim() } }, {
       onSuccess: (user: SessionUser) => {
+        client.clear();
         client.setQueryData(getGetCurrentUserQueryKey(), user);
         setLocation('/');
       },

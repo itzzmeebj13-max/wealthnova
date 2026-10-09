@@ -547,7 +547,7 @@
 .wn-hero-card h2 { font:600 clamp(25px,3vw,38px)/1.12 var(--app-font-serif);max-width:420px;margin:16px 0 10px;position:relative;z-index:1; }
 .wn-hero-card p { color:rgba(255,250,238,.72);font-size:14px;max-width:370px;line-height:1.6;margin:0;position:relative;z-index:1; }
 .wn-hero-kicker { color:#e4c98f;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:700; }
-.wn-hero-card .wn-hero-foot { position:absolute;right:28px;bottom:26px;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.55);z-index:1; }
+.wn-hero-card .wn-hero-foot { position:relative;margin-top:20px;font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.55);z-index:1; }
 .wn-stat-card { grid-column:span 4;display:flex;flex-direction:column;justify-content:space-between;min-height:185px; }
 .wn-stat-card .wn-stat { color:#294b40;font-size:40px; }
 .wn-status-pill { display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#e5eee7;color:#315947;font-weight:700;font-size:11px;text-transform:capitalize; }
@@ -635,3 +635,15 @@
   .wn-form-area { padding:22px 16px 34px; }
   .wn-form-card { padding:25px 21px; }
 }
+.wn-brand-logo { width:38px;height:38px;border-radius:11px;object-fit:cover; }
+.wn-logo-hero { width:64px;height:64px;border-radius:16px;object-fit:cover;margin-bottom:16px;position:relative;z-index:1; }
+.wn-half { grid-column:span 6; }
+.wn-full { grid-column:span 12; }
+.wn-inv-list { display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px; }
+.wn-inv { border:1px solid hsl(var(--border));border-radius:16px;padding:18px; }
+.wn-inv h3 { font-size:16px; }
+.wn-bar { height:7px;border-radius:99px;background:#e8e4d8;overflow:hidden;margin-bottom:8px; }
+.wn-bar span { display:block;height:100%;background:#294b40;border-radius:99px; }
+.wn-confirm { margin-top:16px;padding:16px;border-radius:14px;background:#f0eadc; }
+.wn-confirm p { margin:0 0 12px;font-size:13px;line-height:1.55;color:#4e665b; }
+@media(max-width:700px){ .wn-half,.wn-full { grid-column:span 12; } }

@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:investments": "esbuild src/lib/investments.test.ts --bundle --platform=node --format=esm --external:@prisma/client --outfile=.cache/investments.test.mjs && node .cache/investments.test.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
