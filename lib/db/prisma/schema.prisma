@@ -55,6 +55,17 @@ enum WithdrawalDecision {
   REJECTED
 }
 
+enum DepositStatus {
+  PENDING_VERIFICATION
+  APPROVED
+  REJECTED
+}
+
+enum DepositFilePurpose {
+  RECEIPT
+  QR
+}
+
 model User {
   id           String      @id @default(cuid())
   mobileNumber String      @unique
@@ -87,6 +98,10 @@ model User {
   capitalFunding CompanyCapital[]
   rateChanges ReferralRateVersion[]
   referralNotifications ReferralNotification[]
+  archivedDeposits ArchivedManualDeposit[] @relation("MemberDeposits")
+  archivedDepositDecisions ArchivedManualDeposit[] @relation("AdminDepositDecisions")
+  depositFiles DepositFile[]
+  paymentSettingsUpdates PaymentSettings[]
 
   @@index([referredBy])
 }
@@ -164,6 +179,7 @@ model LedgerEntry {
   balanceAfter      Decimal         @db.Decimal(16, 2)
   createdAt         DateTime        @default(now())
   depositRequestId  String?         @unique
+  depositId String? @unique
   withdrawalId String?
   referralCommissionId String? @unique
   balanceBucket LedgerBalanceBucket @default(AVAILABLE)
@@ -174,6 +190,7 @@ model LedgerEntry {
   withdrawal WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
   referralCommission ReferralCommission? @relation("CommissionCredit", fields: [referralCommissionId], references: [id], onDelete: Restrict)
   sourceCommissions ReferralCommission[] @relation("CommissionSource")
+  archivedDeposit ArchivedManualDeposit? @relation(fields: [depositId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt])
   @@index([investmentId, type])
@@ -471,4 +488,56 @@ model DepositDecisionAudit {
   admin          User @relation(fields: [adminId], references: [id], onDelete: Restrict)
 
   @@index([adminId, createdAt])
+}
+
+// Preserved evidence and accounting from the first, disabled implementation.
+// These are audit archives, not a second payment submission system.
+model ArchivedManualDeposit {
+  id String @id @default(cuid())
+  userId String
+  amount Decimal @db.Decimal(16, 2)
+  transactionReference String @unique
+  receiptFileId String @unique
+  status DepositStatus @default(PENDING_VERIFICATION)
+  verifiedAmount Decimal? @db.Decimal(16, 2)
+  reason String @default("")
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  paymentDetails Json
+  user User @relation("MemberDeposits", fields: [userId], references: [id], onDelete: Restrict)
+  admin User? @relation("AdminDepositDecisions", fields: [reviewedBy], references: [id], onDelete: Restrict)
+  receipt DepositFile @relation(fields: [receiptFileId], references: [id], onDelete: Restrict)
+  ledgerEntry LedgerEntry?
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model DepositFile {
+  id String @id @default(cuid())
+  ownerId String
+  purpose DepositFilePurpose
+  contentType String
+  size Int
+  stagingPath String @unique
+  objectPath String? @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  deposit ArchivedManualDeposit?
+  settings PaymentSettings[]
+  @@index([ownerId, createdAt])
+}
+
+model PaymentSettings {
+  id String @id @default("gcash")
+  enabled Boolean @default(false)
+  accountName String @default("")
+  accountNumber String @default("")
+  instructions String @default("")
+  qrFileId String?
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  qrFile DepositFile? @relation(fields: [qrFileId], references: [id], onDelete: Restrict)
+  admin User? @relation(fields: [updatedBy], references: [id], onDelete: Restrict)
 }

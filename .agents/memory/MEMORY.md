@@ -1,3 +1,7 @@
 - [Deposit availability display](deposit-availability-display.md) — User wants unavailable-deposit warning blocks removed; keep availability in the disabled submit button and preserve security gates.
 - [Manual payout ownership](manual-payout-ownership.md) — Manual GCash payouts need one outstanding withdrawal per member and one assigned processor; reassignment requires bank reconciliation.
 - [Referral commission policy](referral-commission-policy.md) — User chose verified investment purchases as the trigger and funded wallet credits as settlement at 20% / 3% / 1%.
+- [Immutable deposit evidence](deposit-evidence.md) — signed upload destinations remain writable; finalized receipts must use separate private, sanitized copies.
+- [Named OpenAPI inputs](openapi-schema-names.md) — inline request bodies can cause Orval Zod/type barrel collisions; use distinct named component schemas.
+- [Manual workflow reconciliation](manual-workflow-reconciliation.md) — preserve evidence and configured details, but keep one active acceptance/credit system across financial merges.
+- [Conflict-time tooling](conflict-time-tooling.md) — invalid .replit TOML can remove Nix tools from PATH; validate the merged config before repairing packages.

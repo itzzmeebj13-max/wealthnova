@@ -106,6 +106,7 @@ router.get("/plans", async (_request, response) => {
 
 router.get("/deposits/status", async (_request, response) => {
   const settings = mapPaymentSettings(await getPaymentSettings());
+  response.setHeader("Cache-Control", "no-store");
   response.json(
     GetDepositStatusResponse.parse({
       enabled: settings.enabled,

@@ -67,6 +67,19 @@ export function DepositContent() {
 
 type S = DepositPaymentSettings;
 
+export function AdminPaymentSettingsContent() {
+  const me = useGetCurrentUser();
+  const admin = me.data?.role === 'ADMIN';
+  const settings = useGetDepositPaymentSettings({
+    query: { enabled: admin, queryKey: getGetDepositPaymentSettingsQueryKey(), refetchInterval: 15000 },
+  });
+  if (me.isLoading) return <div className="wn-skeleton" />;
+  if (!admin) return <div className="wn-feedback error" role="alert">Administrator access is required.</div>;
+  if (settings.isError) return <div className="wn-feedback error" role="alert">{msg(settings.error, 'Payment settings could not be loaded.')} <button className="wn-link" onClick={() => void settings.refetch()}>Retry</button></div>;
+  if (!settings.data) return <div className="wn-skeleton" />;
+  return <div className="wn-grid"><AdminSettings s={settings.data} refetch={() => settings.refetch()} /></div>;
+}
+
 function PaymentDetails({ s }: { s: S }) {
   const hasQr = !!s.qrImageUrl;
   return (

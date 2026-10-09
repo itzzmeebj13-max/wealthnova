@@ -51,7 +51,7 @@ import { AdminWithdrawalDashboard } from '@/components/admin-withdrawal-dashboar
 import { WithdrawalAccountLink, WithdrawalContent } from '@/components/withdrawal-content';
 import { InviteContent } from '@/components/invite-content';
 import { AdminReferralDashboard } from '@/components/admin-referral-dashboard';
-import { DepositContent } from '@/components/deposit-content';
+import { AdminPaymentSettingsContent, DepositContent } from '@/components/deposit-content';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
 import { Toaster } from '@/components/ui/toaster';
@@ -146,6 +146,14 @@ function Protected({ children, active, title }: { children: ReactNode; active: s
               <span>{user.mobileNumber}</span>
             </div>
           </header>
+          {user.role === 'ADMIN' && (
+            <nav className="wn-actions" aria-label="Admin navigation" style={{ marginBottom: 18 }}>
+              <Link href="/admin/payment-settings" className="wn-button wn-button-quiet" data-testid="link-admin-payments">Payments</Link>
+              <Link href="/admin/deposits" className="wn-button wn-button-quiet" data-testid="link-admin-deposits">Review deposits</Link>
+              <Link href="/admin/withdrawals" className="wn-button wn-button-quiet" data-testid="link-admin-withdrawals">Review withdrawals</Link>
+              <Link href="/admin/referrals" className="wn-button wn-button-quiet">Referral management</Link>
+            </nav>
+          )}
           {children}
         </main>
       </div>
@@ -351,6 +359,10 @@ function DepositPage() {
 
 function AdminDepositsPage() {
   return <Protected active="/deposit" title="Review deposits"><AdminDepositDashboard /></Protected>;
+}
+
+function AdminPaymentSettingsPage() {
+  return <Protected active="/deposit" title="Payment settings"><AdminPaymentSettingsContent /></Protected>;
 }
 
 function WithdrawalPage() {
@@ -593,6 +605,7 @@ function Router() {
         <Route path="/plans" component={PlansPage} />
         <Route path="/deposit" component={DepositPage} />
         <Route path="/admin/deposits" component={AdminDepositsPage} />
+        <Route path="/admin/payment-settings" component={AdminPaymentSettingsPage} />
         <Route path="/withdrawal" component={WithdrawalPage} />
         <Route path="/admin/withdrawals" component={AdminWithdrawalsPage} />
         <Route path="/admin/referrals" component={AdminReferralsPage} />

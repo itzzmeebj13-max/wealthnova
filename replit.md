@@ -10,7 +10,7 @@ WealthNova is a mobile-first member finance portal with phone-based accounts, re
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run prisma:generate` — generate the Prisma client
-- `pnpm --filter @workspace/db run db:push` — sync the development PostgreSQL schema
+- `pnpm --filter @workspace/db exec prisma migrate deploy --schema prisma/schema.prisma` — apply committed additive development migrations after baseline adoption
 - `pnpm --filter @workspace/db run db:seed` — ensure the disabled bootstrap inviter and seven investment plans exist
 - Required env: `DATABASE_URL`, `SESSION_SECRET` (at least 32 characters)
 
@@ -56,10 +56,12 @@ WealthNova is a mobile-first member finance portal with phone-based accounts, re
 
 ## Gotchas
 
-- After changing `lib/db/prisma/schema.prisma`, run Prisma client generation before typechecking the API and synchronize only the development schema with `db:push`.
-- `test:deposits` tests successful pending-request accounting with rolled-back, uncommitted settings; it must not enable public deposit submissions or seed wallet balances. Its disposable upload objects and accounts are cleaned up.
+- After changing `lib/db/prisma/schema.prisma`, run Prisma client generation before typechecking and create an additive development migration. Never reset an existing database.
+- `test:deposits` runs the merged suite plus real rollback/concurrency tests in a disposable schema. It must not enable public deposits or seed shared member funds. Its upload objects, accounts and schema are cleaned up.
 - Approval, rejection, duplicate/concurrent credit, and audit tests run inside a rolled-back transaction. Browser review tests may reject clearly labeled disposable pending fixtures, but must not fabricate a successful payment confirmation or approve test deposits in the shared app.
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See `docs/manual-gcash-setup.md` for Admin setup, manual verification, privacy, and safe development baselining.
+- Keep one active deposit/credit implementation. The newer deposit and withdrawal contracts are authoritative; earlier disabled deposit tables remain audit archives, not a second public funding path.
