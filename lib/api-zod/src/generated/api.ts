@@ -825,11 +825,13 @@ export const GetMyCommissionsQueryParams = zod.object({
 })
 
 export const GetMyCommissionsResponse = zod.object({
+  "totalRecordedAmount": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.string(),
   "beneficiaryId": zod.string(),
   "beneficiaryAccount": zod.string(),
   "sourceAccount": zod.string(),
+  "sourceUserId": zod.string().nullable(),
   "investmentId": zod.string().nullable(),
   "depositId": zod.string().nullable(),
   "sourceType": zod.enum(['INVESTMENT', 'DEPOSIT']),
@@ -866,11 +868,13 @@ export const GetAdminCommissionsQueryParams = zod.object({
 })
 
 export const GetAdminCommissionsResponse = zod.object({
+  "totalRecordedAmount": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.string(),
   "beneficiaryId": zod.string(),
   "beneficiaryAccount": zod.string(),
   "sourceAccount": zod.string(),
+  "sourceUserId": zod.string().nullable(),
   "investmentId": zod.string().nullable(),
   "depositId": zod.string().nullable(),
   "sourceType": zod.enum(['INVESTMENT', 'DEPOSIT']),
@@ -912,6 +916,7 @@ export const ApproveCommissionResponse = zod.object({
   "beneficiaryId": zod.string(),
   "beneficiaryAccount": zod.string(),
   "sourceAccount": zod.string(),
+  "sourceUserId": zod.string().nullable(),
   "investmentId": zod.string().nullable(),
   "depositId": zod.string().nullable(),
   "sourceType": zod.enum(['INVESTMENT', 'DEPOSIT']),
@@ -949,6 +954,7 @@ export const RejectCommissionResponse = zod.object({
   "beneficiaryId": zod.string(),
   "beneficiaryAccount": zod.string(),
   "sourceAccount": zod.string(),
+  "sourceUserId": zod.string().nullable(),
   "investmentId": zod.string().nullable(),
   "depositId": zod.string().nullable(),
   "sourceType": zod.enum(['INVESTMENT', 'DEPOSIT']),
@@ -986,6 +992,7 @@ export const PayCommissionResponse = zod.object({
   "beneficiaryId": zod.string(),
   "beneficiaryAccount": zod.string(),
   "sourceAccount": zod.string(),
+  "sourceUserId": zod.string().nullable(),
   "investmentId": zod.string().nullable(),
   "depositId": zod.string().nullable(),
   "sourceType": zod.enum(['INVESTMENT', 'DEPOSIT']),

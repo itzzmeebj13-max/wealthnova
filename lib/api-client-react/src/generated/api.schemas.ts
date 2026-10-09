@@ -81,6 +81,7 @@ export interface Commission {
   beneficiaryId: string;
   beneficiaryAccount: string;
   sourceAccount: string;
+  sourceUserId: string | null;
   investmentId: string | null;
   depositId: string | null;
   sourceType: CommissionSourceType;
@@ -102,6 +103,7 @@ export interface Commission {
 }
 
 export interface CommissionPage {
+  totalRecordedAmount: string;
   items: Commission[];
   total: number;
   page: number;

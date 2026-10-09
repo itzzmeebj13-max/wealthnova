@@ -336,6 +336,7 @@ export async function customFetch<T = unknown>(
   }
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) headers.set("X-WealthNova-Request", "1");
 
   if (
     typeof init.body === "string" &&

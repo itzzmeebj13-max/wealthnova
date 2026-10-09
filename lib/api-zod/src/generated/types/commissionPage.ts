@@ -8,6 +8,7 @@
 import type { Commission } from './commission';
 
 export interface CommissionPage {
+  totalRecordedAmount: string;
   items: Commission[];
   total: number;
   page: number;

@@ -2,8 +2,8 @@
 
 ## Verified-deposit policy verification
 
-The financial suite verifies 25%/3%/1% on actual verified PHP 350 (even for
-a PHP 500 request): PHP 87.50/10.50/3.50 once. It covers Pending requests,
+The financial suite verifies fixed 20%/3%/1% on actual verified PHP 350 (even for
+a PHP 500 request): PHP 70/10.50/3.50 once. It covers Pending requests,
 replays, no old-deposit backfill, no new investment awards, preserved historical
 20% snapshots, actual qualification, funded earnings and source eligibility.
 
@@ -31,9 +31,10 @@ beneficiary/user query parameter never changes that scope.
 Account → Referral management opens `/admin/referrals`. Active Admin permission
 is enforced by the API, with a fresh role check in financial/rate transactions.
 
-- Current deposit rates start at 25%, 3%, 1%. Each accepts 0–100%, up to two decimals;
-  their combined total cannot exceed 100%. Changes require a reason and the
-  current version, preventing stale concurrent edits.
+- Active deposit rates are fixed at 20%, 3%, 1%. Both the API and the database
+  reject new deposit-rate versions with different percentages. Admins may record
+  a policy confirmation with a reason and current version, preventing stale
+  concurrent confirmations. Historical rate versions remain intact.
 - Rate history is append-only and records the Admin, timestamp and reason.
   Existing commissions retain their rate, basis, amount and source reference.
 - The queue supports status filters, pagination and search by commission ID,

@@ -13,6 +13,7 @@ export interface Commission {
   beneficiaryId: string;
   beneficiaryAccount: string;
   sourceAccount: string;
+  sourceUserId: string | null;
   investmentId: string | null;
   depositId: string | null;
   sourceType: CommissionSourceType;

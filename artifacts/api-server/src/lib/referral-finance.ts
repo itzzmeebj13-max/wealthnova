@@ -54,6 +54,9 @@ export async function changeReferralRates(adminId: string, input: {
   tier1: string; tier2: string; tier3: string; expectedVersion: number; reason: string;
 }, db: ReferralDatabase = prisma) {
   const points = validateRates([input.tier1, input.tier2, input.tier3]);
+  if (points[0] !== 2000 || points[1] !== 300 || points[2] !== 100) {
+    throw new DepositError("The active referral policy requires Tier 1: 20%, Tier 2: 3%, Tier 3: 1%.");
+  }
   const reason = input.reason.trim();
   if (reason.length < 5 || reason.length > 1000) throw new DepositError("Provide a rate-change reason of 5–1000 characters.");
   return referralTransaction(db, async tx => {

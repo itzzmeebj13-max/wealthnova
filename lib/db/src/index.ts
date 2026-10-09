@@ -7,7 +7,8 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    // Route-level logs are sanitized; raw Prisma diagnostics can contain private data.
+    log: [],
   });
 
 if (process.env.NODE_ENV !== "production") {

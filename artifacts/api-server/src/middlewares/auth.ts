@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@workspace/db";
 import { GetCurrentUserResponse } from "@workspace/api-zod";
-import { hashSessionToken, SESSION_COOKIE } from "../lib/auth-session";
+import { clearSessionCookie, hashSessionToken, SESSION_COOKIE } from "../lib/auth-session";
 
 export const publicUserSelect = {
   id: true,
@@ -34,6 +34,7 @@ export async function requireAuth(
   const token = request.cookies?.[SESSION_COOKIE];
 
   if (typeof token !== "string" || token.length < 32 || token.length > 128) {
+    clearSessionCookie(response);
     response.status(401).json({ error: "Sign in to continue." });
     return;
   }
@@ -45,13 +46,16 @@ export async function requireAuth(
 
   if (!session || session.expiresAt.getTime() <= Date.now()) {
     if (session) {
-      await prisma.session.delete({ where: { id: session.id } });
+      await prisma.session.deleteMany({ where: { id: session.id } });
     }
+    clearSessionCookie(response);
     response.status(401).json({ error: "Your session has expired. Sign in again." });
     return;
   }
 
   if (session.user.status !== "ACTIVE") {
+    await prisma.session.deleteMany({ where: { id: session.id } });
+    clearSessionCookie(response);
     response.status(403).json({ error: "This account is not active." });
     return;
   }

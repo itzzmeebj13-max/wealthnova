@@ -44,15 +44,20 @@ export function createReferralRouter(db: ReferralDatabase = prisma): IRouter {
         ...(term ? { OR: [
           { id: { contains: term, mode: "insensitive" } },
           { sourceTransactionReference: { contains: term, mode: "insensitive" } },
+          { depositId: { contains: term, mode: "insensitive" } },
+          { beneficiaryId: { contains: term, mode: "insensitive" } },
+          { sourceUserId: { contains: term, mode: "insensitive" } },
           { beneficiary: { mobileNumber: { contains: term } } },
           { sourceUser: { mobileNumber: { contains: term } } },
         ] } : {}),
       };
-      const [items, total] = await Promise.all([
+      const [items, total, recorded] = await Promise.all([
         db.referralCommission.findMany({ where, include: commissionInclude, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
         db.referralCommission.count({ where }),
+        db.referralCommission.aggregate({ where: isAdmin ? {} : { beneficiaryId: req.user!.id }, _sum: { amount: true } }),
       ]);
-      res.json(Api.GetMyCommissionsResponse.parse({ items: items.map(c => mapCommission(c, isAdmin)), total, page, pageSize: 20 }));
+      res.json(Api.GetMyCommissionsResponse.parse({ items: items.map(c => mapCommission(c, isAdmin)), total, page, pageSize: 20,
+        totalRecordedAmount: recorded._sum.amount?.toFixed(2) ?? "0.00" }));
     }));
   }
   router.get("/admin/referrals/rates", safe(async (_req, res) => {

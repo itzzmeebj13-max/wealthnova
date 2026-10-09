@@ -68,7 +68,7 @@ function History() {
           <div className="wn-panel-head" style={{ marginBottom: 8 }}><h3>{peso(c.amount)}</h3><span className="wn-status-pill">{c.status.toLowerCase()}</span></div>
           <div className="wn-summary-row"><span>Tier</span><strong>Level {c.tier}</strong></div>
           <div className="wn-summary-row"><span>Rate saved</span><strong>{c.ratePercent}%</strong></div>
-          <div className="wn-summary-row"><span>On purchase of</span><strong>{peso(c.basisAmount)}</strong></div>
+          <div className="wn-summary-row"><span>{c.sourceType === 'DEPOSIT' ? 'Eligible verified deposit' : 'Historical investment amount'}</span><strong>{peso(c.basisAmount)}</strong></div>
           <div className="wn-summary-row"><span>Source reference</span><strong style={{ wordBreak: 'break-all' }}>{c.sourceTransactionReference}</strong></div>
           <div className="wn-summary-row"><span>Created</span><strong>{when(c.createdAt)}</strong></div>
           {c.approvedAt && <div className="wn-summary-row"><span>Approved</span><strong>{when(c.approvedAt)}</strong></div>}

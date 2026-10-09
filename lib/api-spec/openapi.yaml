@@ -809,12 +809,13 @@ components:
         confirmed: { type: boolean }
     Commission:
       type: object
-      required: [id, beneficiaryId, beneficiaryAccount, sourceAccount, investmentId, depositId, sourceType, sourceTransactionReference, rateVersion, planName, tier, ratePercent, basisAmount, amount, status, rejectionReason, approvedAt, paidAt, createdAt]
+      required: [id, beneficiaryId, beneficiaryAccount, sourceAccount, sourceUserId, investmentId, depositId, sourceType, sourceTransactionReference, rateVersion, planName, tier, ratePercent, basisAmount, amount, status, rejectionReason, approvedAt, paidAt, createdAt]
       properties:
         id: { type: string }
         beneficiaryId: { type: string }
         beneficiaryAccount: { type: string }
         sourceAccount: { type: string }
+        sourceUserId: { type: string, nullable: true }
         investmentId: { type: string, nullable: true }
         depositId: { type: string, nullable: true }
         sourceType: { type: string, enum: [INVESTMENT, DEPOSIT] }
@@ -832,8 +833,9 @@ components:
         createdAt: { type: string }
     CommissionPage:
       type: object
-      required: [items, total, page, pageSize]
+      required: [items, total, page, pageSize, totalRecordedAmount]
       properties:
+        totalRecordedAmount: { type: string }
         items: { type: array, items: { $ref: "#/components/schemas/Commission" } }
         total: { type: integer }
         page: { type: integer }

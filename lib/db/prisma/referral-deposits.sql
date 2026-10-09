@@ -1,10 +1,32 @@
 -- Policy activation is append-only and idempotent. Never backfill pre-cutover deposits.
 INSERT INTO "ReferralRateVersion" ("id","version","tier1BasisPoints","tier2BasisPoints","tier3BasisPoints",
   "sourceType","effectiveFrom","changeReason","createdAt")
-SELECT 'referral-deposit-policy', COALESCE(MAX("version"),0)+1,2500,300,100,
-  'DEPOSIT',CURRENT_TIMESTAMP,'Owner-requested policy: future verified deposits only, 25% / 3% / 1%; historical investment commissions preserved.',CURRENT_TIMESTAMP
+SELECT 'referral-deposit-policy', COALESCE(MAX("version"),0)+1,2000,300,100,
+  'DEPOSIT',CURRENT_TIMESTAMP,'Verified-deposit policy activation; historical commissions preserved.',CURRENT_TIMESTAMP
 FROM "ReferralRateVersion"
 HAVING NOT EXISTS (SELECT 1 FROM "ReferralRateVersion" WHERE "id"='referral-deposit-policy');
+-- statement
+-- Append the owner's revised policy; do not rewrite prior rates or commissions.
+INSERT INTO "ReferralRateVersion" ("id","version","tier1BasisPoints","tier2BasisPoints","tier3BasisPoints",
+  "sourceType","effectiveFrom","changeReason","createdAt")
+SELECT 'referral-deposit-policy-20', COALESCE(MAX("version"),0)+1,2000,300,100,
+  'DEPOSIT',CURRENT_TIMESTAMP,'Owner-requested fixed deposit rates: 20% / 3% / 1%; historical snapshots preserved.',CURRENT_TIMESTAMP
+FROM "ReferralRateVersion"
+HAVING NOT EXISTS (SELECT 1 FROM "ReferralRateVersion" WHERE "id"='referral-deposit-policy-20');
+-- statement
+CREATE OR REPLACE FUNCTION wealthnova_deposit_rate_policy_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW."sourceType"='DEPOSIT' AND
+    (NEW."tier1BasisPoints"<>2000 OR NEW."tier2BasisPoints"<>300 OR NEW."tier3BasisPoints"<>100) THEN
+    RAISE EXCEPTION 'Active deposit commission policy must be 20%% / 3%% / 1%%' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+-- statement
+DROP TRIGGER IF EXISTS wealthnova_deposit_rate_policy ON "ReferralRateVersion";
+-- statement
+CREATE TRIGGER wealthnova_deposit_rate_policy BEFORE INSERT ON "ReferralRateVersion"
+FOR EACH ROW EXECUTE FUNCTION wealthnova_deposit_rate_policy_guard();
 -- statement
 CREATE OR REPLACE FUNCTION wealthnova_referral_relationship_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE parent_id text; visited text[];

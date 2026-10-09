@@ -17,21 +17,20 @@ export function hashSessionToken(token: string): string {
   return createHmac("sha256", sessionSecret).update(token).digest("hex");
 }
 
-export async function startSession(userId: string, response: Response) {
+export async function startSession(userId: string, response: Response, previousToken?: unknown) {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
 
-  await prisma.session.create({
-    data: {
-      tokenHash: hashSessionToken(token),
-      userId,
-      expiresAt,
-    },
+  await prisma.$transaction(async tx => {
+    if (typeof previousToken === "string" && previousToken.length >= 32 && previousToken.length <= 128) {
+      await tx.session.deleteMany({ where: { tokenHash: hashSessionToken(previousToken) } });
+    }
+    await tx.session.create({ data: { tokenHash: hashSessionToken(token), userId, expiresAt } });
   });
 
   response.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" || response.req.secure,
     sameSite: "lax",
     path: "/api",
     expires: expiresAt,
@@ -41,7 +40,7 @@ export async function startSession(userId: string, response: Response) {
 export function clearSessionCookie(response: Response) {
   response.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" || response.req.secure,
     sameSite: "lax",
     path: "/api",
   });

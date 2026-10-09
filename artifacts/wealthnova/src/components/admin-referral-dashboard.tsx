@@ -41,7 +41,7 @@ function statusStatus(e: unknown) { return (e as { status?: number } | null)?.st
 /* ---------- Rates ---------- */
 function Rates() {
   const client = useQueryClient();
-  const q = useGetAdminReferralRates({ query: { queryKey: getGetAdminReferralRatesQueryKey() } });
+  const q = useGetAdminReferralRates({ query: { queryKey: getGetAdminReferralRatesQueryKey(), refetchInterval: 15000 } });
   const save = useUpdateReferralRates(REQ);
   const [f, setF] = useState<{ tier1: string; tier2: string; tier3: string } | null>(null);
   const [reason, setReason] = useState('');
@@ -71,9 +71,9 @@ function Rates() {
   };
   return <section className="wn-card wn-full" data-testid="panel-referral-rates">
     <div className="wn-panel-head"><h2>Referral rates</h2><span className="wn-status-pill">version {cur.version}</span></div>
-    <p className="wn-helper" style={{ marginBottom: 12 }}>Saved rates apply to FUTURE deposit verifications. Existing commission rows keep their saved source, amount, rate and rate version.</p>
+    <p className="wn-helper" style={{ marginBottom: 12 }}>The active policy is fixed at 20% / 3% / 1%. Existing commission rows keep their historical source, amount, rate and rate version. Administrators can record a policy confirmation, not substitute other rates.</p>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12 }}>
-      {(['tier1', 'tier2', 'tier3'] as const).map((k, i) => <div className="wn-field" key={k}><label htmlFor={`rate-${k}`}>Tier {i + 1} percent</label><input id={`rate-${k}`} className="wn-input" inputMode="decimal" value={vals[k]} onChange={e => setF({ ...vals, [k]: e.target.value })} data-testid={`input-rate-${k}`} /></div>)}
+      {(['tier1', 'tier2', 'tier3'] as const).map((k, i) => <div className="wn-field" key={k}><label htmlFor={`rate-${k}`}>Tier {i + 1} percent</label><input id={`rate-${k}`} className="wn-input" inputMode="decimal" value={vals[k]} readOnly data-testid={`input-rate-${k}`} /></div>)}
     </div>
     <div className="wn-field"><label htmlFor="rate-reason">Reason for change (5-1000 characters)</label><textarea id="rate-reason" className="wn-input" style={{ height: 80, padding: 12 }} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-rate-reason" /></div>
     {stale && <p className="wn-helper">Version refreshed to {cur.version}.</p>}
@@ -223,7 +223,11 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
     </div>
     <div className="wn-summary-row"><span>ID</span><strong style={{ wordBreak: 'break-all' }}>{c.id}</strong></div>
     <div className="wn-summary-row"><span>Referring account</span><strong>{c.beneficiaryAccount}</strong></div>
+    <div className="wn-summary-row"><span>Referrer's user ID</span><strong style={{ wordBreak: 'break-all' }}>{c.beneficiaryId}</strong></div>
     <div className="wn-summary-row"><span>Referred account</span><strong>{c.sourceAccount}</strong></div>
+    <div className="wn-summary-row"><span>Referred user's ID</span><strong style={{ wordBreak: 'break-all' }}>{c.sourceUserId}</strong></div>
+    <div className="wn-summary-row"><span>Related deposit ID</span><strong style={{ wordBreak: 'break-all' }}>{c.depositId ?? 'Historical investment source'}</strong></div>
+    <div className="wn-summary-row"><span>Eligible source amount</span><strong>{peso(c.basisAmount)}</strong></div>
     <div className="wn-summary-row"><span>Tier</span><strong>{c.tier}</strong></div>
     <div className="wn-summary-row"><span>{c.depositId ? 'Verified deposit reference' : 'Historical investment ledger'}</span><strong style={{ wordBreak: 'break-all' }}>{c.sourceTransactionReference}</strong></div>
     <div className="wn-summary-row"><span>Rate (v{c.rateVersion})</span><strong>{c.ratePercent}% of {peso(c.basisAmount)}</strong></div>
@@ -263,8 +267,10 @@ function Commissions() {
   const pages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   return <section className="wn-card wn-full" data-testid="panel-admin-commissions">
     <div className="wn-panel-head"><h2>Commissions</h2></div>
+    {q.data && <div className="wn-summary-row" data-testid="total-referral-commissions-recorded"><span>Total commissions recorded (all statuses)</span><strong>{peso(q.data.totalRecordedAmount)}</strong></div>}
+    <p className="wn-helper" style={{ marginBottom: 12 }}>Recorded commissions include pending and rejected records; this is not a spendable balance. Search by commission, deposit or user ID, mobile number or source reference.</p>
     <form onSubmit={e => { e.preventDefault(); setSearch(text.trim().slice(0, 100)); setPage(1); }} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-      <input className="wn-input" aria-label="Search commissions" placeholder="Search account, ID or source reference" maxLength={100} value={text} onChange={e => setText(e.target.value)} data-testid="input-commission-search" />
+      <input className="wn-input" aria-label="Search commissions" placeholder="Search user, deposit, commission or reference" maxLength={100} value={text} onChange={e => setText(e.target.value)} data-testid="input-commission-search" />
       <button className="wn-button" type="submit" data-testid="button-commission-search">Search</button>
     </form>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }} role="group" aria-label="Filter by status">

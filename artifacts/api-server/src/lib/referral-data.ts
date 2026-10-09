@@ -15,6 +15,7 @@ export function mapCommission(c: CommissionRecord, admin = false) {
     id: c.id, beneficiaryId: c.beneficiaryId,
     beneficiaryAccount: admin ? c.beneficiary.mobileNumber : `••••${c.beneficiary.mobileNumber.slice(-4)}`,
     sourceAccount: admin ? c.sourceUser.mobileNumber : `••••${c.sourceUser.mobileNumber.slice(-4)}`,
+    sourceUserId: admin ? c.sourceUserId : null,
     investmentId: c.investmentId, depositId: c.depositId, sourceType: c.depositId ? "DEPOSIT" : "INVESTMENT",
     sourceTransactionReference: c.sourceTransactionReference,
     rateVersion: c.rateVersion.version, planName: c.investment?.plan.name ?? "Verified deposit",

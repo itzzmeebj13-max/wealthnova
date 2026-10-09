@@ -1,6 +1,6 @@
 - [Deposit availability display](deposit-availability-display.md) — User wants unavailable-deposit warning blocks removed; keep availability in the disabled submit button and preserve security gates.
 - [Manual payout ownership](manual-payout-ownership.md) — Manual GCash payouts need one outstanding withdrawal per member and one assigned processor; reassignment requires bank reconciliation.
-- [Referral commission policy](referral-commission-policy.md) — Future verified deposits earn 25% / 3% / 1%; no backfill or new investment awards, preserve old snapshots and require funded wallet settlement.
+- [Referral commission policy](referral-commission-policy.md) — Fixed 20% / 3% / 1% on future verified deposits; no backfill/investment awards, preserve old snapshots, funded-wallet settlement only.
 - [Immutable deposit evidence](deposit-evidence.md) — signed upload destinations remain writable; finalized receipts must use separate private, sanitized copies.
 - [Named OpenAPI inputs](openapi-schema-names.md) — inline request bodies can cause Orval Zod/type barrel collisions; use distinct named component schemas.
 - [Manual workflow reconciliation](manual-workflow-reconciliation.md) — preserve evidence and configured details, but keep one active acceptance/credit system across financial merges.
