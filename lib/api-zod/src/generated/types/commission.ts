@@ -5,6 +5,7 @@
  * API for WealthNova account access and member-facing pages
  * OpenAPI spec version: 0.1.0
  */
+import type { CommissionSourceType } from './commissionSourceType';
 import type { CommissionStatus } from './commissionStatus';
 
 export interface Commission {
@@ -12,7 +13,9 @@ export interface Commission {
   beneficiaryId: string;
   beneficiaryAccount: string;
   sourceAccount: string;
-  investmentId: string;
+  investmentId: string | null;
+  depositId: string | null;
+  sourceType: CommissionSourceType;
   sourceTransactionReference: string;
   rateVersion: number;
   planName: string;

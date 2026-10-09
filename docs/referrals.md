@@ -1,9 +1,24 @@
 # Referral management and funded wallet commissions
 
+## Verified-deposit policy verification
+
+The financial suite verifies 25%/3%/1% on actual verified PHP 350 (even for
+a PHP 500 request): PHP 87.50/10.50/3.50 once. It covers Pending requests,
+replays, no old-deposit backfill, no new investment awards, preserved historical
+20% snapshots, actual qualification, funded earnings and source eligibility.
+
+The browser pass verified personal-link registration, distinct codes and saved
+parent relationship, current rates, totals, copy/share fallback, real
+registration notification and Invite layouts at 320/390. It was manually skipped
+before Admin-dialog focus/bounds regression checks. A scoped wrapping fix was
+applied to the reported Admin overflow but was not rechecked in that skipped
+pass. Temporary accounts, temporary Admin access, sessions, zero wallets and test
+notification were removed afterwards. No live financial decision was made.
+
 ## Member experience
 
 The existing Invite page now shows the referral code/link, copy controls, direct
-and three-tier counts, current rates, status totals, own commission history and
+and three-tier counts, copy/share controls, qualified referrals, actually paid earnings, current rates, status totals, own commission history and
 event-based notifications. History filters are All, Pending, Approved, Rejected
 and Paid. “Paid” means an authorized **wallet credit**, not a GCash payout.
 
@@ -16,7 +31,7 @@ beneficiary/user query parameter never changes that scope.
 Account → Referral management opens `/admin/referrals`. Active Admin permission
 is enforced by the API, with a fresh role check in financial/rate transactions.
 
-- Current rates start at 20%, 3%, 1%. Each accepts 0–100%, up to two decimals;
+- Current deposit rates start at 25%, 3%, 1%. Each accepts 0–100%, up to two decimals;
   their combined total cannot exceed 100%. Changes require a reason and the
   current version, preventing stale concurrent edits.
 - Rate history is append-only and records the Admin, timestamp and reason.
@@ -37,10 +52,13 @@ changed. Referral event handlers live in PostgreSQL, installed separately from
 the Prisma schema:
 
 - Successful member insertion notifies the original active inviter.
-- Insertion of an actual investment-debit ledger entry generates at most three
-  Pending commission snapshots **inside the existing purchase transaction**.
-- Only Active/Completed investments with a matching purchaser, principal and
-  investment-debit ledger qualify. No signup or deposit commission is generated.
+- Deposit approval generates at most three Pending snapshots **inside the
+  existing verification transaction**, only once both approval audit and the
+  active deposit's wallet-credit ledger exist. Calculations use verified amount,
+  not the member's requested amount.
+- The append-only policy activation timestamp determines the cutover. Past
+  approved deposits are never backfilled; new investment purchases generate no
+  additional commissions. Existing investment-source commissions remain intact.
 - The bootstrap invite-only account does not receive commissions.
 - The rate version effective at the server-recorded purchase start time is used.
   The default baseline applies to prior verified purchases without snapshots;
@@ -87,7 +105,7 @@ After applying the additive schema:
 
 ```sh
 pnpm --filter @workspace/db run prisma:generate
-pnpm --filter @workspace/db run db:push
+pnpm --filter @workspace/db exec prisma migrate deploy --schema prisma/schema.prisma
 pnpm --filter @workspace/db run referrals:install
 pnpm --filter @workspace/api-spec run codegen
 ```

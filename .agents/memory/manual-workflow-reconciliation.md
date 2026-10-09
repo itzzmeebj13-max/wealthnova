@@ -15,3 +15,14 @@ accept or credit the same external payment twice.
 mounting a second router. Preserve old evidence without exposing a second
 credit path. Refuse automatic conversion of nonempty legacy payment queues
 until their receipts, decisions, and credits have been reconciled.
+
+When integrating financial events after reconciliation, verify which retained
+reference belongs to the active workflow; archived fields may still exist.
+
+**Why:** A commission integration matched an archived deposit reference even
+though the active verification had succeeded. This silently prevented eligible
+commission generation until the actual credit relation was used.
+
+**How to apply:** Follow the live approval writer and Prisma relations rather
+than assuming a similarly named retained ledger field is current. Require the
+active approval audit and active ledger credit together.

@@ -24,7 +24,7 @@ const STATUS_COPY: Record<string, string> = {
 };
 
 function Head() {
-  return <div className="wn-page-head"><div className="wn-eyebrow">Your personal invitation</div><h1 className="wn-display">Good things travel by word of mouth.</h1><p>Your code and link let someone you trust join. Commission records appear below only after a referred member buys a plan.</p></div>;
+  return <div className="wn-page-head"><div className="wn-eyebrow">Your personal invitation</div><h1 className="wn-display">Good things travel by word of mouth.</h1><p>Your code and link let someone you trust join. New commissions are recorded only after a referred member’s deposit is independently verified.</p></div>;
 }
 
 function Notifications() {
@@ -56,7 +56,7 @@ function History() {
   const pages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   return <section className="wn-card wn-full" data-testid="panel-commission-history">
     <div className="wn-panel-head"><h2>Commission history</h2></div>
-    <p className="wn-helper" style={{ marginBottom: 12 }}>Source references are internal investment ledger references, not GCash payout confirmations. Each row keeps the rate saved when it was created; later rate changes apply only to future plan purchases.</p>
+    <p className="wn-helper" style={{ marginBottom: 12 }}>New records reference verified deposits; historical investment records keep their original source and rate. A source reference is not a commission payout confirmation.</p>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }} role="group" aria-label="Filter by status">
       {FILTERS.map(([v, l]) => <button key={v} className={`wn-button ${status === v ? '' : 'wn-button-quiet'}`} aria-pressed={status === v} onClick={() => { setStatus(v); setPage(1); }} data-testid={`filter-commission-${v.toLowerCase()}`}>{l}</button>)}
     </div>
@@ -93,6 +93,13 @@ export function InviteContent() {
     try { await navigator.clipboard.writeText(value); setCopyError(''); setCopyState(`${label} copied`); }
     catch { setCopyError('Copy is unavailable in this browser. Select and copy the text instead.'); }
   };
+  const share = async () => {
+    if (!referrals.data) return;
+    const url = new URL(referrals.data.referralLink, window.location.origin).toString();
+    if (!navigator.share) { await copy(url, 'Link'); return; }
+    try { await navigator.share({ title: 'Join WealthNova', text: 'My personal WealthNova invitation', url }); setCopyError(''); setCopyState('Sharing completed'); }
+    catch (e) { if (!(e instanceof Error && e.name === 'AbortError')) setCopyError('Sharing is unavailable. Use Copy Referral Link instead.'); }
+  };
   if (referrals.isError) return <><Head /><div className="wn-empty" role="alert" data-testid="error-invite"><h3>We couldn’t load this just now</h3><p>{errMsg(referrals.error, 'Your referral information is temporarily unavailable.')}</p><button className="wn-button wn-button-quiet" style={{ marginTop: 18 }} onClick={() => void referrals.refetch()} data-testid="button-retry">Try again</button></div></>;
   if (!referrals.data) return <><Head /><div className="wn-loading" data-testid="loading-invite"><div className="wn-skeleton" /><div className="wn-skeleton" /></div></>;
   const r = referrals.data;
@@ -114,6 +121,7 @@ export function InviteContent() {
             <button className="wn-button wn-button-light" onClick={() => void copy(link, 'Link')} data-testid="button-copy-link"><Copy size={15} />{copyState === 'Link copied' ? 'Copied' : 'Copy Referral Link'}</button>
           </div>
         </div>
+        <button className="wn-button wn-button-quiet" style={{ marginTop: 12, maxWidth: '100%' }} onClick={() => void share()} data-testid="button-share-link">Share Referral Link</button>
         {copyState && <p role="status" className="wn-feedback" style={{ marginTop: 14, marginBottom: 0 }} data-testid="status-copy">{copyState}</p>}
         {copyError && <p role="status" className="wn-feedback error" style={{ marginTop: 14, marginBottom: 0 }} data-testid="error-copy">{copyError}</p>}
       </section>
@@ -129,10 +137,14 @@ export function InviteContent() {
           const rate = r.rates.find(x => x.tier === t);
           return <div className="wn-summary-row" key={t}><span>Level {t} · {n} {n === 1 ? 'person' : 'people'}</span><strong>{rate ? `${rate.percent}% current rate` : 'Rate unavailable'}</strong></div>;
         })}
-        <p className="wn-helper" style={{ marginTop: 10 }}>Current rates apply to future plan purchases only. Commissions already recorded keep the rate saved on them.</p>
+        <p className="wn-helper" style={{ marginTop: 10 }}>Current rates apply to newly verified deposits after the policy switch. Historical commissions keep their saved rate; past deposits are not backfilled.</p>
       </section>
       <section className="wn-card wn-half" data-testid="panel-commission-totals">
         <div className="wn-panel-head"><h2>Commission totals</h2></div>
+        <div className="wn-summary-row"><span>Total qualified referrals</span><strong data-testid="qualified-referrals">{r.totalQualifiedReferrals}</strong></div>
+        <p className="wn-helper">Distinct invited members within three tiers with an actually verified deposit.</p>
+        <div className="wn-summary-row"><span>Referral commissions earned</span><strong data-testid="commissions-earned">{peso(r.totalCommissionsEarned)}</strong></div>
+        <p className="wn-helper">Earned means completed funded wallet credits, not Pending or Approved amounts.</p>
         <div className="wn-summary-row"><span>Total commissions recorded</span><strong data-testid="total-commissions">{peso(r.commissionTotals.total)}</strong></div>
         <p className="wn-helper">Total includes all statuses, including rejected records. Only paid wallet credits are spendable.</p>
         <div className="wn-summary-row"><span>Pending (no wallet funds)</span><strong data-testid="total-pending">{peso(r.commissionTotals.pending)}</strong></div>

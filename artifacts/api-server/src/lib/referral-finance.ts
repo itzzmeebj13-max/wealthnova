@@ -4,7 +4,7 @@ import { DepositError } from "./private-images";
 import { normalizeTransactionReference } from "./deposits";
 import { FUND_ID, commissionInclude, requireActiveAdmin, validateRates } from "./referral-data";
 
-export type ReferralDatabase = Pick<typeof prisma, "referralCommission" | "companyCapital" | "user" | "referralNotification" | "referralRateVersion" | "commissionAudit"> & {
+export type ReferralDatabase = Pick<typeof prisma, "depositRequest" | "referralCommission" | "companyCapital" | "user" | "referralNotification" | "referralRateVersion" | "commissionAudit"> & {
   $transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>, options?: { isolationLevel: Prisma.TransactionIsolationLevel }): Promise<T>;
 };
 export async function referralTransaction<T>(db: ReferralDatabase, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -62,7 +62,7 @@ export async function changeReferralRates(adminId: string, input: {
     if (latest.version !== input.expectedVersion) throw new DepositError("Rates were changed by another administrator. Reload before saving.", 409);
     return tx.referralRateVersion.create({ data: {
       version: latest.version + 1, tier1BasisPoints: points[0], tier2BasisPoints: points[1], tier3BasisPoints: points[2],
-      effectiveFrom: new Date(), changedById: adminId, changeReason: reason,
+      effectiveFrom: new Date(), sourceType: latest.sourceType, changedById: adminId, changeReason: reason,
     } });
   });
 }
@@ -105,10 +105,17 @@ export async function verifyCapital(adminId: string, input: CapitalInput, db: Re
 async function ensureEligible(tx: Prisma.TransactionClient, id: string) {
   const c = await tx.referralCommission.findUniqueOrThrow({ where: { id }, include: commissionInclude });
   const source = c.sourceLedger;
-  if (c.beneficiaryId === c.sourceUserId || c.beneficiary.status !== "ACTIVE" ||
-    !["ACTIVE", "COMPLETED"].includes(c.investment.status) || source.type !== "INVESTMENT_DEBIT" ||
-    source.userId !== c.sourceUserId || source.investmentId !== c.investmentId ||
-    !source.amount.equals(c.basisAmount) || !c.investment.principalAmount.equals(c.basisAmount) ||
+  const deposit = c.deposit;
+  const sourceEligible = deposit ? deposit.status === "APPROVED" && Boolean(deposit.approvedAt) &&
+    deposit.userId === c.sourceUserId && deposit.transactionReference === c.sourceTransactionReference &&
+    source.type === "DEPOSIT_CREDIT" && source.depositRequestId === deposit.id &&
+    deposit.verifiedAmount?.equals(c.basisAmount) && deposit.decisionAudit?.decision === "APPROVED" &&
+    deposit.decisionAudit.adminId === deposit.reviewedById && deposit.decisionAudit.verifiedAmount?.equals(c.basisAmount) &&
+    (deposit.decisionAudit.verificationNote?.trim().length ?? 0) >= 10 :
+    c.investment && ["ACTIVE", "COMPLETED"].includes(c.investment.status) && source.type === "INVESTMENT_DEBIT" &&
+    source.investmentId === c.investmentId && c.investment.principalAmount.equals(c.basisAmount);
+  if (c.beneficiaryId === c.sourceUserId || c.beneficiary.status !== "ACTIVE" || !sourceEligible ||
+    source.userId !== c.sourceUserId || !source.amount.equals(c.basisAmount) ||
     !c.basisAmount.mul(c.rateBasisPoints).div(10000).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP).equals(c.amount)) {
     throw new DepositError("This commission's beneficiary or verified source transaction is no longer eligible.", 409);
   }

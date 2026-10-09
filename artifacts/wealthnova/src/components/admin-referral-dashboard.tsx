@@ -62,7 +62,7 @@ function Rates() {
     const r = reason.trim();
     if (r.length < 5 || r.length > 1000) return setMsg({ ok: false, text: 'Reason must be 5 to 1000 characters.' });
     save.mutate({ data: { ...vals, expectedVersion: cur.version, reason: r } }, {
-      onSuccess: () => { setF(null); setReason(''); setStale(false); setMsg({ ok: true, text: 'Rates saved. They apply to future plan purchases only.' }); void client.invalidateQueries({ queryKey: getGetAdminReferralRatesQueryKey() }); void client.invalidateQueries({ queryKey: getGetMyReferralsQueryKey() }); },
+      onSuccess: () => { setF(null); setReason(''); setStale(false); setMsg({ ok: true, text: 'Rates saved. They apply to future verified deposits only.' }); void client.invalidateQueries({ queryKey: getGetAdminReferralRatesQueryKey() }); void client.invalidateQueries({ queryKey: getGetMyReferralsQueryKey() }); },
       onError: e => {
         if (statusStatus(e) === 409) { setStale(true); void q.refetch(); setMsg({ ok: false, text: 'Rates were changed by someone else. The latest version is loaded; review your values and save again.' }); setF(null); }
         else setMsg({ ok: false, text: errMsg(e, 'Rates could not be saved.') });
@@ -71,7 +71,7 @@ function Rates() {
   };
   return <section className="wn-card wn-full" data-testid="panel-referral-rates">
     <div className="wn-panel-head"><h2>Referral rates</h2><span className="wn-status-pill">version {cur.version}</span></div>
-    <p className="wn-helper" style={{ marginBottom: 12 }}>Saved rates apply to FUTURE investment purchases. Existing commission rows keep their saved rate and rate version.</p>
+    <p className="wn-helper" style={{ marginBottom: 12 }}>Saved rates apply to FUTURE deposit verifications. Existing commission rows keep their saved source, amount, rate and rate version.</p>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12 }}>
       {(['tier1', 'tier2', 'tier3'] as const).map((k, i) => <div className="wn-field" key={k}><label htmlFor={`rate-${k}`}>Tier {i + 1} percent</label><input id={`rate-${k}`} className="wn-input" inputMode="decimal" value={vals[k]} onChange={e => setF({ ...vals, [k]: e.target.value })} data-testid={`input-rate-${k}`} /></div>)}
     </div>
@@ -189,6 +189,7 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState('');
   const busy = approve.isPending || reject.isPending || pay.isPending;
+  const actionTrigger = useRef<HTMLButtonElement | null>(null);
   const allowed = mode === 'approve' ? c.status === 'PENDING' : mode === 'pay' ? c.status === 'APPROVED' :
     mode === 'reject' ? (c.status === 'PENDING' || c.status === 'APPROVED') : true;
   useEffect(() => {
@@ -215,22 +216,22 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
   return <article className="wn-inv" data-testid={`card-commission-${c.id}`}>
     <div className="wn-panel-head" style={{ marginBottom: 8 }}><h3>{peso(c.amount)}</h3><span className="wn-status-pill">{c.status}</span></div>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }} aria-label="Commission actions">
-      {c.status === 'PENDING' && <button className="wn-button" disabled={busy} onClick={() => { reset(); setMode('approve'); }} data-testid={`button-approve-${c.id}`}>Approve</button>}
-      {c.status === 'APPROVED' && <button className="wn-button" disabled={busy} onClick={() => { reset(); setMode('pay'); }} data-testid={`button-pay-${c.id}`}>Pay to wallet</button>}
-      {(c.status === 'PENDING' || c.status === 'APPROVED') && <button className="wn-button wn-button-quiet" disabled={busy} onClick={() => { reset(); setMode('reject'); }} data-testid={`button-reject-${c.id}`}>Reject</button>}
+      {c.status === 'PENDING' && <button className="wn-button" disabled={busy} onClick={e => { actionTrigger.current = e.currentTarget; reset(); setMode('approve'); }} data-testid={`button-approve-${c.id}`}>Approve</button>}
+      {c.status === 'APPROVED' && <button className="wn-button" disabled={busy} onClick={e => { actionTrigger.current = e.currentTarget; reset(); setMode('pay'); }} data-testid={`button-pay-${c.id}`}>Pay to wallet</button>}
+      {(c.status === 'PENDING' || c.status === 'APPROVED') && <button className="wn-button wn-button-quiet" disabled={busy} onClick={e => { actionTrigger.current = e.currentTarget; reset(); setMode('reject'); }} data-testid={`button-reject-${c.id}`}>Reject</button>}
       <button className="wn-button wn-button-light" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid={`button-audit-${c.id}`}>{open ? 'Hide audit log' : 'Audit log'}</button>
     </div>
     <div className="wn-summary-row"><span>ID</span><strong style={{ wordBreak: 'break-all' }}>{c.id}</strong></div>
     <div className="wn-summary-row"><span>Referring account</span><strong>{c.beneficiaryAccount}</strong></div>
     <div className="wn-summary-row"><span>Referred account</span><strong>{c.sourceAccount}</strong></div>
     <div className="wn-summary-row"><span>Tier</span><strong>{c.tier}</strong></div>
-    <div className="wn-summary-row"><span>Source ref (internal ledger)</span><strong style={{ wordBreak: 'break-all' }}>{c.sourceTransactionReference}</strong></div>
+    <div className="wn-summary-row"><span>{c.depositId ? 'Verified deposit reference' : 'Historical investment ledger'}</span><strong style={{ wordBreak: 'break-all' }}>{c.sourceTransactionReference}</strong></div>
     <div className="wn-summary-row"><span>Rate (v{c.rateVersion})</span><strong>{c.ratePercent}% of {peso(c.basisAmount)}</strong></div>
     <div className="wn-summary-row"><span>Date</span><strong>{when(c.createdAt)}</strong></div>
     {c.rejectionReason && <div className="wn-summary-row"><span>Rejection reason</span><strong>{c.rejectionReason}</strong></div>}
     {c.status === 'PENDING' && <p className="wn-helper" style={{ marginTop: 8 }}>Pending holds no wallet funds.</p>}
     <Dialog open={Boolean(mode)} onOpenChange={opened => { if (!opened && !busy) reset(); }}>
-      <DialogContent style={{ width: 'calc(100vw - 32px)', maxWidth: 440 }} data-testid="dialog-commission-decision">
+      <DialogContent style={{ width: 'calc(100vw - 32px)', maxWidth: 440 }} onCloseAutoFocus={e => { if (actionTrigger.current?.isConnected) { e.preventDefault(); actionTrigger.current.focus(); } }} data-testid="dialog-commission-decision">
       <DialogHeader>
         <DialogTitle>{mode === 'approve' ? 'Approve commission' : mode === 'reject' ? 'Reject commission' : 'Pay commission to wallet'}</DialogTitle>
         <DialogDescription>{copy}</DialogDescription>

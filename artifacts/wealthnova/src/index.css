@@ -606,6 +606,13 @@
 .wn-codebox span { display:block;color:#7b847b;font-size:11px;margin-bottom:6px; }
 .wn-referral-content .wn-card,
 .wn-referral-content .wn-inv { min-width:0; }
+.wn-referral-content .wn-input { min-width:0;max-width:100%; }
+.wn-referral-content .wn-summary-row > * { min-width:0;overflow-wrap:anywhere; }
+.wn-referral-content { min-width:0;max-width:100%;overflow-wrap:anywhere; }
+.wn-referral-content .wn-grid,
+.wn-referral-content .wn-field,
+.wn-referral-content .wn-inv-list { min-width:0;max-width:100%; }
+.wn-referral-content .wn-panel-head { flex-wrap:wrap; }
 .wn-referral-content .wn-codebox { flex-wrap:wrap;min-width:0;max-width:100%; }
 .wn-referral-content .wn-codebox > div,
 .wn-referral-content .wn-codebox > a { flex:1 1 180px;min-width:0;max-width:100%;overflow-wrap:anywhere; }

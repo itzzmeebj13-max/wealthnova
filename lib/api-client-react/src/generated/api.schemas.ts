@@ -58,6 +58,14 @@ export interface CommissionDecisionInput {
   confirmed: boolean;
 }
 
+export type CommissionSourceType = typeof CommissionSourceType[keyof typeof CommissionSourceType];
+
+
+export const CommissionSourceType = {
+  INVESTMENT: 'INVESTMENT',
+  DEPOSIT: 'DEPOSIT',
+} as const;
+
 export type CommissionStatus = typeof CommissionStatus[keyof typeof CommissionStatus];
 
 
@@ -73,7 +81,9 @@ export interface Commission {
   beneficiaryId: string;
   beneficiaryAccount: string;
   sourceAccount: string;
-  investmentId: string;
+  investmentId: string | null;
+  depositId: string | null;
+  sourceType: CommissionSourceType;
   sourceTransactionReference: string;
   rateVersion: number;
   planName: string;
@@ -573,6 +583,9 @@ export interface ReferralOverview {
   tier2Count: number;
   tier3Count: number;
   totalInvitedUsers: number;
+  totalQualifiedReferrals: number;
+  /** Actually completed funded wallet credits only. */
+  totalCommissionsEarned: string;
   rates: ReferralOverviewRatesItem[];
   commissionTotals: ReferralOverviewCommissionTotals;
 }

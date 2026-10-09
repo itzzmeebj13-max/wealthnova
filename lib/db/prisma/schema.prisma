@@ -281,6 +281,7 @@ model ReferralRateVersion {
   tier2BasisPoints Int
   tier3BasisPoints Int
   effectiveFrom DateTime
+  sourceType String @default("INVESTMENT")
   changedById String?
   changeReason String
   createdAt DateTime @default(now())
@@ -299,7 +300,8 @@ model ReferralCommission {
   id String @id @default(cuid())
   beneficiaryId String
   sourceUserId String
-  investmentId String
+  investmentId String?
+  depositId String?
   sourceLedgerId String
   sourceTransactionReference String
   rateVersionId String
@@ -316,7 +318,8 @@ model ReferralCommission {
   updatedAt DateTime @updatedAt
   beneficiary User @relation("CommissionBeneficiary", fields: [beneficiaryId], references: [id], onDelete: Restrict)
   sourceUser User @relation("CommissionSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
-  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+  investment Investment? @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+  deposit DepositRequest? @relation(fields: [depositId], references: [id], onDelete: Restrict)
   sourceLedger LedgerEntry @relation("CommissionSource", fields: [sourceLedgerId], references: [id], onDelete: Restrict)
   rateVersion ReferralRateVersion @relation(fields: [rateVersionId], references: [id], onDelete: Restrict)
   ledgerEntry LedgerEntry? @relation("CommissionCredit")
@@ -325,6 +328,8 @@ model ReferralCommission {
   notifications ReferralNotification[]
   @@unique([investmentId, tier])
   @@unique([investmentId, beneficiaryId])
+  @@unique([depositId, tier])
+  @@unique([depositId, beneficiaryId])
   @@index([beneficiaryId, status, createdAt])
   @@index([status, createdAt])
 }
@@ -468,6 +473,7 @@ model DepositRequest {
   reviewedBy         User? @relation("DepositReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
   decisionAudit      DepositDecisionAudit?
   ledgerEntry        LedgerEntry?
+  referralCommissions ReferralCommission[]
 
   @@unique([userId, idempotencyKey])
   @@index([userId, createdAt])

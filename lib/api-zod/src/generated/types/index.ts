@@ -20,6 +20,7 @@ export * from './commissionDecisionInput';
 export * from './commissionFundSummary';
 export * from './commissionFundSummaryEntriesItem';
 export * from './commissionPage';
+export * from './commissionSourceType';
 export * from './commissionStatus';
 export * from './companyCapitalInput';
 export * from './companyCapitalRecord';

@@ -69,8 +69,12 @@ BEGIN
       AND "userId" = source_record."userId" AND "amount" = source_record."principalAmount"
     ORDER BY "createdAt", "id" LIMIT 1;
   IF NOT FOUND THEN RETURN; END IF;
+  -- Deposit policy replaces investment rewards prospectively, never historical snapshots.
+  IF EXISTS (SELECT 1 FROM "ReferralRateVersion" WHERE "sourceType" = 'DEPOSIT'
+    AND "effectiveFrom" <= source_entry."createdAt") THEN RETURN; END IF;
   SELECT * INTO rate_record FROM "ReferralRateVersion"
-    WHERE "effectiveFrom" <= source_record."startDate" ORDER BY "effectiveFrom" DESC, "version" DESC LIMIT 1;
+    WHERE "sourceType" = 'INVESTMENT' AND "effectiveFrom" <= source_record."startDate"
+    ORDER BY "effectiveFrom" DESC, "version" DESC LIMIT 1;
   IF NOT FOUND THEN RAISE EXCEPTION 'Referral rate baseline is missing'; END IF;
   parent_id := source_record."referredBy";
   visited := ARRAY[source_record."userId"];
@@ -141,9 +145,9 @@ FOR EACH ROW EXECUTE FUNCTION wealthnova_claim_deposit_evidence();
 -- statement
 CREATE OR REPLACE FUNCTION wealthnova_referral_snapshot_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF ROW(NEW."beneficiaryId", NEW."sourceUserId", NEW."investmentId", NEW."sourceLedgerId",
+  IF ROW(NEW."beneficiaryId", NEW."sourceUserId", NEW."investmentId", NEW."depositId", NEW."sourceLedgerId",
     NEW."sourceTransactionReference", NEW."rateVersionId", NEW."tier", NEW."rateBasisPoints", NEW."basisAmount", NEW."amount")
-    IS DISTINCT FROM ROW(OLD."beneficiaryId", OLD."sourceUserId", OLD."investmentId", OLD."sourceLedgerId",
+    IS DISTINCT FROM ROW(OLD."beneficiaryId", OLD."sourceUserId", OLD."investmentId", OLD."depositId", OLD."sourceLedgerId",
     OLD."sourceTransactionReference", OLD."rateVersionId", OLD."tier", OLD."rateBasisPoints", OLD."basisAmount", OLD."amount") THEN
     RAISE EXCEPTION 'Historical commission snapshots are immutable' USING ERRCODE = '23514';
   END IF;

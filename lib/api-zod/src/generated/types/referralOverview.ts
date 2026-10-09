@@ -17,6 +17,9 @@ export interface ReferralOverview {
   tier2Count: number;
   tier3Count: number;
   totalInvitedUsers: number;
+  totalQualifiedReferrals: number;
+  /** Actually completed funded wallet credits only. */
+  totalCommissionsEarned: string;
   rates: ReferralOverviewRatesItem[];
   commissionTotals: ReferralOverviewCommissionTotals;
 }

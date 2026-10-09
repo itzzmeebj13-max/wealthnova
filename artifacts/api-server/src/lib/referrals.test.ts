@@ -9,6 +9,7 @@ import * as Api from "@workspace/api-zod";
 import { startSession } from "./auth-session";
 import { createReferralRouter } from "../routes/referrals";
 import { getReferralOverview, validateRates } from "./referral-data";
+import { decideDeposit } from "./deposit-decisions";
 import { collectVerifiedFees, getFundSummary, type ReferralDatabase } from "./referral-finance";
 import { createWithdrawalRouter } from "../routes/withdrawals";
 import type { WithdrawalDatabase } from "./withdrawals";
@@ -47,7 +48,7 @@ try {
         catch (e) { await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${label}`); await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${label}`); throw e; }
       };
       const db: ReferralDatabase = {
-        user: tx.user, referralCommission: tx.referralCommission, referralRateVersion: tx.referralRateVersion,
+        user: tx.user, depositRequest: tx.depositRequest, referralCommission: tx.referralCommission, referralRateVersion: tx.referralRateVersion,
         referralNotification: tx.referralNotification, commissionAudit: tx.commissionAudit, companyCapital: tx.companyCapital,
         $transaction: fn => scoped(() => fn(tx)),
       };
@@ -83,15 +84,16 @@ try {
       assert.equal((await send("/admin/commission-fund/receipt", {}, cookies[3])).status, 403);
       assert.equal((await send("/admin/referrals/rates", {}, cookies[0], "PUT", false)).status, 403);
       const initialSettings = Api.GetAdminReferralRatesResponse.parse(await json(await get("/admin/referrals/rates", cookies[0])));
-      assert.deepEqual([initialSettings.current.tier1, initialSettings.current.tier2, initialSettings.current.tier3], [20, 3, 1]);
+      assert.deepEqual([initialSettings.current.tier1, initialSettings.current.tier2, initialSettings.current.tier3], [25, 3, 1]);
       const network = await getReferralOverview(tier3, tx);
       assert.deepEqual([network.tier1Count, network.tier2Count, network.tier3Count, network.totalInvitedUsers], [1, 1, 1, 3]);
       assert.equal(await tx.referralNotification.count({ where: { eventKey: `registration:${investor}`, userId: tier1 } }), 1);
       await assert.rejects(scoped(() => tx.user.update({ where: { id: investor }, data: { referredBy: tier3 } })), /Original referrer cannot be changed/);
 
       const plan = await tx.investmentPlan.findUniqueOrThrow({ where: { id: "plan-350" } });
-      async function purchase(status: "ACTIVE" | "CANCELLED" = "ACTIVE", verified = true) {
-        const startDate = new Date();
+      async function purchase(status: "ACTIVE" | "CANCELLED" = "ACTIVE", verified = true, legacy = true) {
+        const policy = await tx.referralRateVersion.findUniqueOrThrow({ where: { id: "referral-deposit-policy" } });
+        const startDate = legacy ? new Date(policy.effectiveFrom.getTime() - 60000) : new Date();
         const investment = await tx.investment.create({ data: {
           userId: investor, planId: plan.id, principalAmount: plan.principalAmount, dailyAmount: plan.dailyAmount,
           duration: plan.duration, startDate, endDate: new Date(startDate.getTime() + 25 * 86400000),
@@ -99,7 +101,7 @@ try {
         } });
         if (verified) await tx.ledgerEntry.create({ data: {
           userId: investor, investmentId: investment.id, reference: `rollback-purchase:${investment.id}`,
-          type: "INVESTMENT_DEBIT", amount: plan.principalAmount, balanceAfter: 0,
+          type: "INVESTMENT_DEBIT", amount: plan.principalAmount, balanceAfter: 0, createdAt: startDate,
         } });
         return investment;
       }
@@ -126,6 +128,50 @@ try {
       assert.equal((await decision(commissions[0].id, "pay")).status, 409);
       assert.equal((await decision(commissions[0].id, "approve")).status, 409, "No reserve cannot approve or mint wallet money");
       assert.equal((await decision(commissions[0].id, "approve", { note: "confirm required", confirmed: false })).status, 400);
+      const cutoverProbe = new Error("ROLLBACK_ONLY_CUTOVER_PROBE");
+      await assert.rejects(scoped(async () => {
+        const receipt = await tx.depositImage.create({ data: { userId: investor, purpose: "RECEIPT",
+          objectPath: `rollback-only/${randomUUID()}`, contentType: "image/png", size: 100, digest: randomUUID() } });
+        const d = await tx.depositRequest.create({ data: { userId: investor, amount: "500",
+          transactionReference: `CUTOVER${randomInt(10000000, 99999999)}`, receiptImageId: receipt.id,
+          receiptDigest: receipt.digest, idempotencyKey: randomUUID(), accountName: "ROLLBACK-only receiver",
+          accountNumber: "+639171234567", settingsVersion: 1 } });
+        assert.equal(await tx.referralCommission.count({ where: { depositId: d.id } }), 0);
+        const approve = { type: "APPROVE" as const, data: { verifiedAmount: "350",
+          confirmedPaymentReceived: true, confirmedAmountDifference: true,
+          verificationNote: "ROLLBACK-only verified actual 350 rather than requested 500" } };
+        const depositDb = { depositRequest: tx.depositRequest, $transaction: <T,>(fn: (t: Prisma.TransactionClient) => Promise<T>) => scoped(() => fn(tx)) };
+        await decideDeposit(admin, d.id, approve, depositDb);
+        await decideDeposit(admin, d.id, approve, depositDb);
+        await tx.$queryRaw`SELECT wealthnova_generate_deposit_commissions(${d.id})::text`;
+        const earned = await tx.referralCommission.findMany({ where: { depositId: d.id }, orderBy: { tier: "asc" } });
+        assert.deepEqual(earned.map(c => [c.rateBasisPoints, c.basisAmount.toFixed(2), c.amount.toFixed(2)]),
+          [[2500, "350.00", "87.50"], [300, "350.00", "10.50"], [100, "350.00", "3.50"]]);
+        assert.ok(earned.every(c => c.status === "PENDING" && c.sourceTransactionReference === d.transactionReference));
+        assert.equal((await getReferralOverview(tier3, tx)).totalQualifiedReferrals, 1);
+        assert.equal((await getReferralOverview(tier1, tx)).totalCommissionsEarned, "0.00");
+        assert.equal(await tx.referralNotification.count({ where: { commissionId: { in: earned.map(c => c.id) } } }), 6);
+        const newInvestment = await purchase("ACTIVE", true, false);
+        assert.equal(await tx.referralCommission.count({ where: { investmentId: newInvestment.id } }), 0);
+        const oldDate = new Date((await tx.referralRateVersion.findUniqueOrThrow({ where: { id: "referral-deposit-policy" } })).effectiveFrom.getTime() - 60000);
+        const oldReceipt = await tx.depositImage.create({ data: { userId: investor, purpose: "RECEIPT",
+          objectPath: `rollback-only/${randomUUID()}`, contentType: "image/png", size: 100, digest: randomUUID() } });
+        const old = await tx.depositRequest.create({ data: { userId: investor, amount: "350",
+          transactionReference: `OLDDEP${randomInt(10000000, 99999999)}`, receiptImageId: oldReceipt.id,
+          receiptDigest: oldReceipt.digest, idempotencyKey: randomUUID(), accountName: "ROLLBACK-only receiver",
+          accountNumber: "+639171234567", settingsVersion: 1, status: "APPROVED", approvedAt: oldDate,
+          reviewedAt: oldDate, reviewedById: admin, verifiedAmount: "350" } });
+        await tx.ledgerEntry.create({ data: { userId: investor, depositRequestId: old.id,
+          reference: `deposit:${old.id}`, type: "DEPOSIT_CREDIT", amount: "350", balanceAfter: "350", createdAt: oldDate } });
+        await tx.depositDecisionAudit.create({ data: { depositId: old.id, adminId: admin, decision: "APPROVED",
+          verifiedAmount: "350", verificationNote: "ROLLBACK-only historical verified fixture", createdAt: oldDate } });
+        await tx.$queryRaw`SELECT wealthnova_generate_deposit_commissions(${old.id})::text`;
+        assert.equal(await tx.referralCommission.count({ where: { depositId: old.id } }), 0, "Never backfill pre-cutover deposits");
+        const selfId = randomUUID();
+        await assert.rejects(scoped(() => tx.user.create({ data: { id: selfId, mobileNumber: `SELF-${selfId}`,
+          passwordHash: "ROLLBACK-only", referralCode: `SELF-${selfId}`, referredBy: selfId } })), /Self or circular referral/);
+        throw cutoverProbe;
+      }), e => e === cutoverProbe);
 
       const rateInput = { tier1: "30", tier2: "5", tier3: "2", expectedVersion: initialSettings.current.version, reason: "ROLLBACK-only future rates test" };
       assert.equal((await send("/admin/referrals/rates", { ...rateInput, tier1: "120" }, cookies[0], "PUT")).status, 400);
@@ -135,13 +181,26 @@ try {
       assert.equal(updated.history[1].version, initialSettings.current.version);
       assert.equal((await send("/admin/referrals/rates", rateInput, cookies[0], "PUT")).status, 409);
       assert.deepEqual((await getReferralOverview(tier3, tx)).rates.map(r => r.percent), [30, 5, 2]);
-      const future = await purchase();
-      const newer = await tx.referralCommission.findMany({ where: { investmentId: future.id }, orderBy: { tier: "asc" } });
+      const receipt = await tx.depositImage.create({ data: {
+        userId: investor, purpose: "RECEIPT", objectPath: `rollback-only/${randomUUID()}`,
+        contentType: "image/png", size: 100, digest: randomUUID(),
+      } });
+      const future = await tx.depositRequest.create({ data: {
+        userId: investor, amount: "350", transactionReference: `ROLLBACKDEPOSIT${randomInt(10000000, 99999999)}`,
+        receiptImageId: receipt.id, receiptDigest: receipt.digest, idempotencyKey: randomUUID(),
+        accountName: "ROLLBACK-only receiver", accountNumber: "+639171234567", settingsVersion: 1,
+      } });
+      assert.equal(await tx.referralCommission.count({ where: { depositId: future.id } }), 0);
+      const approval = { type: "APPROVE" as const, data: { verifiedAmount: "350", confirmedPaymentReceived: true,
+        confirmedAmountDifference: false, verificationNote: "ROLLBACK-only independently verified bank fixture" } };
+      await decideDeposit(admin, future.id, approval, { depositRequest: tx.depositRequest, $transaction: fn => scoped(() => fn(tx)) });
+      await decideDeposit(admin, future.id, approval, { depositRequest: tx.depositRequest, $transaction: fn => scoped(() => fn(tx)) });
+      const newer = await tx.referralCommission.findMany({ where: { depositId: future.id }, orderBy: { tier: "asc" } });
       assert.deepEqual(newer.map(c => [c.rateBasisPoints, c.amount.toFixed(2)]), [[3000, "105.00"], [500, "17.50"], [200, "7.00"]]);
       assert.deepEqual((await tx.referralCommission.findMany({ where: { investmentId: investment.id }, orderBy: { tier: "asc" } })).map(c => c.amount.toFixed(2)), ["70.00", "10.50", "3.50"]);
       await assert.rejects(scoped(() => tx.referralCommission.update({ where: { id: commissions[0].id }, data: { amount: 99 } })), /Historical commission snapshots are immutable/);
       await assert.rejects(scoped(() => tx.referralCommission.update({ where: { id: commissions[0].id }, data: { status: "PAID" } })), /Paid requires a completed funded wallet credit/);
-      assert.equal(Api.GetAdminCommissionsResponse.parse(await json(await get("/admin/commissions?search=rollback-purchase&status=PENDING", cookies[0]))).total, 6);
+      assert.equal(Api.GetAdminCommissionsResponse.parse(await json(await get("/admin/commissions?search=rollback&status=PENDING", cookies[0]))).total, 6);
       const image = async (owner: string, purpose: "CAPITAL_RECEIPT" | "RECEIPT", seed: string) => tx.depositImage.create({ data: {
         userId: owner, purpose, objectPath: `rollback-only/${randomUUID()}`, contentType: "image/png", size: 100,
         digest: createHash("sha256").update(seed).digest("hex"),
@@ -214,7 +273,7 @@ try {
         assert.ok(list.items.every((c: { status: string; beneficiaryId: string }) => c.status === status && c.beneficiaryId === tier1));
       }
       assert.equal(Api.GetCommissionAuditResponse.parse(await json(await get(`/admin/commissions/${commissions[0].id}/audit`, cookies[0]))).length, 2);
-      await tx.investment.update({ where: { id: future.id }, data: { status: "CANCELLED" } });
+      await tx.ledgerEntry.update({ where: { depositRequestId: future.id }, data: { amount: "99" } });
       assert.equal((await decision(newer[0].id, "approve")).status, 409);
       await tx.wallet.update({ where: { userId: investor }, data: { availableBalance: "2000" } });
       const withdrawal = await json(await send("/withdrawals/requests", {
@@ -244,7 +303,7 @@ try {
       assert.ok(summary.entries.some(e => e.type === "VERIFIED_CAPITAL" && e.amount === "1000.00"));
       assert.ok(summary.entries.some(e => e.type === "VERIFIED_FEE" && e.amount === "50.00"));
       console.log("PASS: insufficient approved reserves prevent Paid status, wallet credits, payout audit and notifications; fee/capital funding is tracked separately.");
-      console.log("PASS: rates 20/3/1, future updates, snapshots, tier ancestry, ownership/Admin/CSRF, duplicate generation/funding/payment/release, source eligibility, actual-event notifications, funded wallet completion and cross-source evidence reuse.");
+      console.log("PASS: current rates 25/3/1, preserved historical 20/3/1, future verified deposits and rate updates, snapshots, tier ancestry, ownership/Admin/CSRF, duplicate generation/funding/payment/release, source eligibility, actual-event notifications, funded wallet completion and cross-source evidence reuse.");
       throw rollback;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 90000 });
   } catch (e) { if (e !== rollback) throw e; }
