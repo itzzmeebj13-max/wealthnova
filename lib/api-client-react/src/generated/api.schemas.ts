@@ -49,7 +49,7 @@ export interface RegistrationInput {
   /**
      * @minLength 8
      * @maxLength 16
-     * @pattern ^\+[1-9][0-9]{7,14}$
+     * @pattern ^(09[0-9]{9}|\+639[0-9]{9}|639[0-9]{9})$
      */
   mobileNumber: string;
   /**
@@ -68,7 +68,7 @@ export interface LoginInput {
   /**
      * @minLength 8
      * @maxLength 16
-     * @pattern ^\+[1-9][0-9]{7,14}$
+     * @pattern ^(09[0-9]{9}|\+639[0-9]{9}|639[0-9]{9})$
      */
   mobileNumber: string;
   /**

@@ -24,7 +24,7 @@ export const registerBodyMobileNumberMin = 8;
 export const registerBodyMobileNumberMax = 16;
 
 
-export const registerBodyMobileNumberRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const registerBodyMobileNumberRegExp = new RegExp('^(09[0-9]{9}|\\+639[0-9]{9}|639[0-9]{9})$');
 export const registerBodyPasswordMin = 12;
 export const registerBodyPasswordMax = 128;
 
@@ -57,7 +57,7 @@ export const loginBodyMobileNumberMin = 8;
 export const loginBodyMobileNumberMax = 16;
 
 
-export const loginBodyMobileNumberRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const loginBodyMobileNumberRegExp = new RegExp('^(09[0-9]{9}|\\+639[0-9]{9}|639[0-9]{9})$');
 export const loginBodyPasswordMax = 128;
 
 

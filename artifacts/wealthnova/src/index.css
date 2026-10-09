@@ -588,6 +588,7 @@
 .wn-input:focus { border-color:#688777;box-shadow:0 0 0 3px rgba(67,108,85,.12); }
 .wn-input::placeholder { color:#a4aaa3; }
 .wn-helper { font-size:11px;color:#849087;line-height:1.5; }
+.wn-field-error { color:#984d42;font-size:12px;font-weight:600;line-height:1.4; }
 .wn-form-bottom { font-size:13px;color:#728078;text-align:center;margin-top:20px; }
 .wn-form-bottom a { color:#315b46;font-weight:700;text-decoration:none; }
 .wn-feedback { font-size:12px;padding:10px 12px;border-radius:9px;background:#e7efe7;color:#315b46;margin:0 0 15px; }

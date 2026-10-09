@@ -36,6 +36,11 @@ import {
   useValidateReferralCode,
 } from '@workspace/api-client-react';
 import type { SessionUser } from '@workspace/api-client-react';
+import {
+  isValidPhilippineMobileNumber,
+  normalizePhilippineMobileNumber,
+  PHILIPPINE_MOBILE_VALIDATION_MESSAGE,
+} from '@workspace/api-zod';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormField } from '@/components/ui/form';
@@ -369,7 +374,10 @@ function AuthLayout({ mode, children }: { mode: 'login' | 'register'; children: 
   </div>;
 }
 
-const mobileNumberSchema = z.string().regex(/^\+[1-9][0-9]{7,14}$/, 'Enter a mobile number with country code, such as +14155550123.');
+const mobileNumberSchema = z.string().refine(
+  isValidPhilippineMobileNumber,
+  PHILIPPINE_MOBILE_VALIDATION_MESSAGE,
+);
 const loginSchema = z.object({
   mobileNumber: mobileNumberSchema,
   password: z.string().min(1, 'Enter your password.').max(128, 'Password must be 128 characters or fewer.'),
@@ -389,8 +397,12 @@ function LoginPage() {
     defaultValues: { mobileNumber: '', password: '' },
   });
   const submit = (values: z.infer<typeof loginSchema>) => {
-    const { mobileNumber, password } = values;
-    login.mutate({ data: { mobileNumber, password } }, {
+    const mobileNumber = normalizePhilippineMobileNumber(values.mobileNumber);
+    if (!mobileNumber) {
+      form.setError('mobileNumber', { type: 'validate', message: PHILIPPINE_MOBILE_VALIDATION_MESSAGE });
+      return;
+    }
+    login.mutate({ data: { mobileNumber, password: values.password } }, {
       onSuccess: (user: SessionUser) => {
         client.setQueryData(getGetCurrentUserQueryKey(), user);
         setLocation('/');
@@ -404,8 +416,8 @@ function LoginPage() {
       {login.isError && <div className="wn-feedback error" role="alert" data-testid="error-login">{errorMessage(login.error, 'We couldn’t sign you in. Check your details and try again.')}</div>}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(submit)} data-testid="form-login">
-          <FormField control={form.control} name="mobileNumber" render={({ field }) => (
-            <div className="wn-field"><label htmlFor="login-mobile">Mobile number</label><input {...field} id="login-mobile" className="wn-input" type="tel" autoComplete="tel" placeholder="+14155550123" required pattern="^\+[1-9][0-9]{7,14}$" data-testid="input-login-mobile" /><span className="wn-helper">Include your country code, for example +14155550123.</span></div>
+          <FormField control={form.control} name="mobileNumber" render={({ field, fieldState }) => (
+            <div className="wn-field"><label htmlFor="login-mobile">Mobile number</label><input {...field} id="login-mobile" className="wn-input" type="tel" autoComplete="tel" placeholder="09171234567" maxLength={16} required data-testid="input-login-mobile" /><span className="wn-helper">Use a Philippine number: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX.</span>{fieldState.error?.message && <span className="wn-field-error" role="alert" data-testid="error-login-mobile">{fieldState.error.message}</span>}</div>
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <div className="wn-field"><label htmlFor="login-password">Password</label><input {...field} id="login-password" className="wn-input" type="password" autoComplete="current-password" required data-testid="input-login-password" /></div>
@@ -460,7 +472,12 @@ function RegisterPage() {
       setFormError('Enter a valid referral code before creating your account.');
       return;
     }
-    register.mutate({ data: { mobileNumber: values.mobileNumber, password: values.password, referralCode: values.referralCode.trim() } }, {
+    const mobileNumber = normalizePhilippineMobileNumber(values.mobileNumber);
+    if (!mobileNumber) {
+      form.setError('mobileNumber', { type: 'validate', message: PHILIPPINE_MOBILE_VALIDATION_MESSAGE });
+      return;
+    }
+    register.mutate({ data: { mobileNumber, password: values.password, referralCode: values.referralCode.trim() } }, {
       onSuccess: (user: SessionUser) => {
         client.setQueryData(getGetCurrentUserQueryKey(), user);
         setLocation('/');
@@ -475,8 +492,8 @@ function RegisterPage() {
       {register.isError && <div className="wn-feedback error" role="alert" data-testid="error-register">{errorMessage(register.error, 'We couldn’t create your account. Please try again.')}</div>}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(submit)} data-testid="form-register">
-          <FormField control={form.control} name="mobileNumber" render={({ field }) => (
-            <div className="wn-field"><label htmlFor="register-mobile">Mobile number</label><input {...field} id="register-mobile" className="wn-input" type="tel" autoComplete="tel" placeholder="+14155550123" required pattern="^\+[1-9][0-9]{7,14}$" data-testid="input-register-mobile" /><span className="wn-helper">Include your country code: + followed by 8–15 digits.</span></div>
+          <FormField control={form.control} name="mobileNumber" render={({ field, fieldState }) => (
+            <div className="wn-field"><label htmlFor="register-mobile">Mobile number</label><input {...field} id="register-mobile" className="wn-input" type="tel" autoComplete="tel" placeholder="09171234567" maxLength={16} required data-testid="input-register-mobile" /><span className="wn-helper">Use a Philippine number: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX.</span>{fieldState.error?.message && <span className="wn-field-error" role="alert" data-testid="error-register-mobile">{fieldState.error.message}</span>}</div>
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <div className="wn-field"><label htmlFor="register-password">Password</label><input {...field} id="register-password" className="wn-input" type="password" autoComplete="new-password" minLength={12} maxLength={128} required data-testid="input-register-password" /><span className="wn-helper">Use at least 12 characters.</span></div>

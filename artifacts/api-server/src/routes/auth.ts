@@ -5,6 +5,9 @@ import {
   LoginBody,
   LoginResponse,
   LogoutResponse,
+  getPhilippineMobileNumberCandidates,
+  normalizePhilippineMobileNumber,
+  PHILIPPINE_MOBILE_VALIDATION_MESSAGE,
   RegisterBody,
   RegisterResponse,
   ValidateReferralCodeBody,
@@ -92,21 +95,30 @@ async function createReferralCode() {
 }
 
 router.post("/auth/register", async (request, response) => {
-  const parsed = RegisterBody.safeParse(request.body);
+  const requestBody =
+    request.body && typeof request.body === "object" && !Array.isArray(request.body)
+      ? request.body
+      : {};
+  const mobileNumber = normalizePhilippineMobileNumber(requestBody.mobileNumber);
+  if (!mobileNumber) {
+    response.status(400).json({ error: PHILIPPINE_MOBILE_VALIDATION_MESSAGE });
+    return;
+  }
+
+  const parsed = RegisterBody.safeParse({ ...requestBody, mobileNumber });
   if (!parsed.success) {
-    response.status(400).json({ error: "Enter a valid mobile number, password, and referral code." });
+    response.status(400).json({ error: "Enter a valid password and referral code." });
     return;
   }
 
   const input = parsed.data;
-  const mobileNumber = input.mobileNumber.trim();
   const referralCode = input.referralCode.trim().toUpperCase();
   const passwordHash = await hashPassword(input.password);
 
   try {
     const user = await prisma.$transaction(async (transaction) => {
-      const existingUser = await transaction.user.findUnique({
-        where: { mobileNumber },
+      const existingUser = await transaction.user.findFirst({
+        where: { mobileNumber: { in: getPhilippineMobileNumberCandidates(mobileNumber) } },
         select: { id: true },
       });
       if (existingUser) {
@@ -120,7 +132,7 @@ router.post("/auth/register", async (request, response) => {
       if (!referrer || referrer.status === "SUSPENDED") {
         throw new RegistrationError("That referral code is invalid or unavailable.", 400);
       }
-      if (referrer.mobileNumber === mobileNumber) {
+      if (getPhilippineMobileNumberCandidates(referrer.mobileNumber).includes(mobileNumber)) {
         throw new RegistrationError("You cannot use your own referral code.", 400);
       }
 
@@ -157,15 +169,25 @@ router.post("/auth/register", async (request, response) => {
 });
 
 router.post("/auth/login", async (request, response) => {
-  const parsed = LoginBody.safeParse(request.body);
-  if (!parsed.success) {
-    response.status(400).json({ error: "Enter a valid mobile number and password." });
+  const requestBody =
+    request.body && typeof request.body === "object" && !Array.isArray(request.body)
+      ? request.body
+      : {};
+  const mobileNumber = normalizePhilippineMobileNumber(requestBody.mobileNumber);
+  if (!mobileNumber) {
+    response.status(400).json({ error: PHILIPPINE_MOBILE_VALIDATION_MESSAGE });
     return;
   }
 
-  const { mobileNumber, password } = parsed.data;
-  const user = await prisma.user.findUnique({
-    where: { mobileNumber: mobileNumber.trim() },
+  const parsed = LoginBody.safeParse({ ...requestBody, mobileNumber });
+  if (!parsed.success) {
+    response.status(400).json({ error: "Enter a valid password." });
+    return;
+  }
+
+  const { password } = parsed.data;
+  const user = await prisma.user.findFirst({
+    where: { mobileNumber: { in: getPhilippineMobileNumberCandidates(mobileNumber) } },
     select: { ...publicUserSelect, passwordHash: true },
   });
   const validPassword = await verifyPassword(
