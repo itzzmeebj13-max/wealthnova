@@ -65,7 +65,10 @@ export async function getReferralOverview(userId: string, db: ReferralReads = pr
     referralCount: level1.length, tier1Count: level1.length, tier2Count: level2.length, tier3Count: level3,
     totalInvitedUsers: level1.length + level2.length + level3,
     rates: [rate.tier1BasisPoints, rate.tier2BasisPoints, rate.tier3BasisPoints].map((p, i) => ({ tier: i + 1, percent: p / 100 })),
-    commissionTotals: { pending: sum("PENDING"), approved: sum("APPROVED"), rejected: sum("REJECTED"), paid: sum("PAID") },
+    commissionTotals: {
+      total: groups.reduce((total, g) => total.add(g._sum.amount ?? 0), new Prisma.Decimal(0)).toFixed(2),
+      pending: sum("PENDING"), approved: sum("APPROVED"), rejected: sum("REJECTED"), paid: sum("PAID"),
+    },
   };
 }
 

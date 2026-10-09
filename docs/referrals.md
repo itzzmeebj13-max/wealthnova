@@ -121,3 +121,18 @@ Separate funding totals are verified with rollback-only fixtures: company
 capital PHP 1,000, actually completed-payout fees PHP 50 and funded wallet payments
 PHP 70 reconcile to PHP 980 available and zero reserved. Both source types retain
 distinct financial entries. These values are test fixtures, not live money.
+
+### Invite and Admin review controls
+
+Invite shows a server-calculated total across all commission statuses, with
+separate Pending/Approved/Rejected/Paid amounts. The total explicitly includes
+rejected records and is not a spendable balance. Saved rates, history and unread
+notifications refresh every 15 seconds while the page is open.
+
+Admin review appears first in Referral Management. Pending records show Approve
+and Reject at the top of the record; Approved records show Pay to wallet and
+Reject, while final records offer only audit history. Each financial action
+opens an accessible confirmation dialog with an unchecked confirmation and
+required review note. If a refreshed status makes the action invalid, the dialog
+closes. Server transaction, source verification, reserve checks and idempotency
+remain authoritative.

@@ -556,6 +556,8 @@ export type ReferralOverviewRatesItem = {
 };
 
 export type ReferralOverviewCommissionTotals = {
+  /** All recorded commission amounts across all statuses, including rejected; not a spendable balance. */
+  total: string;
   pending: string;
   approved: string;
   rejected: string;

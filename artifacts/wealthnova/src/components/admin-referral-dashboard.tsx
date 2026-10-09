@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { LoaderCircle, ShieldAlert } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   getGetAdminCommissionsQueryKey,
   getGetAdminReferralRatesQueryKey,
@@ -10,6 +11,7 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetMyCommissionsQueryKey,
   getGetMyReferralsQueryKey,
+  getGetReferralNotificationsQueryKey,
   useApproveCommission,
   useGetAdminCommissions,
   useGetAdminReferralRates,
@@ -187,9 +189,14 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState('');
   const busy = approve.isPending || reject.isPending || pay.isPending;
+  const allowed = mode === 'approve' ? c.status === 'PENDING' : mode === 'pay' ? c.status === 'APPROVED' :
+    mode === 'reject' ? (c.status === 'PENDING' || c.status === 'APPROVED') : true;
+  useEffect(() => {
+    if (mode && !allowed && !busy) { setMode(''); setNote(''); setOk(false); setErr(''); }
+  }, [mode, allowed, busy]);
   const reset = () => { setMode(''); setNote(''); setOk(false); setErr(''); };
   const run = () => {
-    if (busy || !mode) return; setErr('');
+    if (busy || !mode || !allowed) return; setErr('');
     const n = note.trim();
     if (n.length < 5 || n.length > 1000) return setErr('Note must be 5 to 1000 characters.');
     if (!ok) return setErr('Tick the confirmation to continue.');
@@ -197,7 +204,7 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
     const fn = m === 'approve' ? approve : m === 'reject' ? reject : pay;
     fn.mutate({ commissionId: c.id, data: { note: n, confirmed: true } }, {
       onSuccess: () => {
-        for (const key of [getGetAdminCommissionsQueryKey(), getGetCommissionAuditQueryKey(c.id), getGetCommissionFundQueryKey(), getGetMyCommissionsQueryKey(), getGetMyReferralsQueryKey(), getGetDashboardSummaryQueryKey()]) void client.invalidateQueries({ queryKey: key });
+        for (const key of [getGetAdminCommissionsQueryKey(), getGetCommissionAuditQueryKey(c.id), getGetCommissionFundQueryKey(), getGetMyCommissionsQueryKey(), getGetMyReferralsQueryKey(), getGetReferralNotificationsQueryKey(), getGetDashboardSummaryQueryKey()]) void client.invalidateQueries({ queryKey: key });
         onNotice(m === 'approve' ? 'Commission approved and reserve held. No wallet credit yet.' : m === 'reject' ? 'Commission rejected and reserve released.' : 'Commission paid into the member wallet.');
         reset();
       },
@@ -207,6 +214,12 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
   const copy = { approve: 'Approving reserves verified operating money for this commission. Nothing is credited to the wallet yet.', reject: c.status === 'PENDING' ? 'Rejecting a pending commission changes no wallet or reserve funds.' : 'Rejecting an approved commission releases its reserved money back to the available reserve once.', pay: 'Paying transfers the reserved verified funds into the member wallet. This is not a GCash payout.' }[mode || 'approve'];
   return <article className="wn-inv" data-testid={`card-commission-${c.id}`}>
     <div className="wn-panel-head" style={{ marginBottom: 8 }}><h3>{peso(c.amount)}</h3><span className="wn-status-pill">{c.status}</span></div>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }} aria-label="Commission actions">
+      {c.status === 'PENDING' && <button className="wn-button" disabled={busy} onClick={() => { reset(); setMode('approve'); }} data-testid={`button-approve-${c.id}`}>Approve</button>}
+      {c.status === 'APPROVED' && <button className="wn-button" disabled={busy} onClick={() => { reset(); setMode('pay'); }} data-testid={`button-pay-${c.id}`}>Pay to wallet</button>}
+      {(c.status === 'PENDING' || c.status === 'APPROVED') && <button className="wn-button wn-button-quiet" disabled={busy} onClick={() => { reset(); setMode('reject'); }} data-testid={`button-reject-${c.id}`}>Reject</button>}
+      <button className="wn-button wn-button-light" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid={`button-audit-${c.id}`}>{open ? 'Hide audit log' : 'Audit log'}</button>
+    </div>
     <div className="wn-summary-row"><span>ID</span><strong style={{ wordBreak: 'break-all' }}>{c.id}</strong></div>
     <div className="wn-summary-row"><span>Referring account</span><strong>{c.beneficiaryAccount}</strong></div>
     <div className="wn-summary-row"><span>Referred account</span><strong>{c.sourceAccount}</strong></div>
@@ -215,23 +228,25 @@ function Row({ c, onNotice }: { c: Commission; onNotice: (s: string) => void }) 
     <div className="wn-summary-row"><span>Rate (v{c.rateVersion})</span><strong>{c.ratePercent}% of {peso(c.basisAmount)}</strong></div>
     <div className="wn-summary-row"><span>Date</span><strong>{when(c.createdAt)}</strong></div>
     {c.rejectionReason && <div className="wn-summary-row"><span>Rejection reason</span><strong>{c.rejectionReason}</strong></div>}
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-      {c.status === 'PENDING' && !mode && <button className="wn-button" onClick={() => { reset(); setMode('approve'); }} data-testid={`button-approve-${c.id}`}>Approve</button>}
-      {c.status === 'APPROVED' && !mode && <button className="wn-button" onClick={() => { reset(); setMode('pay'); }} data-testid={`button-pay-${c.id}`}>Pay to wallet</button>}
-      {(c.status === 'PENDING' || c.status === 'APPROVED') && !mode && <button className="wn-button wn-button-quiet" onClick={() => { reset(); setMode('reject'); }} data-testid={`button-reject-${c.id}`}>Reject</button>}
-      <button className="wn-button wn-button-light" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid={`button-audit-${c.id}`}>{open ? 'Hide audit log' : 'Audit log'}</button>
-    </div>
     {c.status === 'PENDING' && <p className="wn-helper" style={{ marginTop: 8 }}>Pending holds no wallet funds.</p>}
-    {mode && <fieldset disabled={busy} className="wn-confirm" style={{ border: 0, minWidth: 0 }}>
-      <p>{copy}</p>
+    <Dialog open={Boolean(mode)} onOpenChange={opened => { if (!opened && !busy) reset(); }}>
+      <DialogContent style={{ width: 'calc(100vw - 32px)', maxWidth: 440 }} data-testid="dialog-commission-decision">
+      <DialogHeader>
+        <DialogTitle>{mode === 'approve' ? 'Approve commission' : mode === 'reject' ? 'Reject commission' : 'Pay commission to wallet'}</DialogTitle>
+        <DialogDescription>{copy}</DialogDescription>
+      </DialogHeader>
+      <p className="wn-helper">Commission {c.id} · {peso(c.amount)} · Current status: {c.status}. The server rechecks status, source eligibility and verified reserve funds before recording approval or payment.</p>
+      <fieldset disabled={busy || !allowed} style={{ border: 0, padding: 0, minWidth: 0 }}>
       {err && <div className="wn-feedback error" role="alert" data-testid="error-commission-action">{err}</div>}
       <div className="wn-field"><label htmlFor={`n-${c.id}`}>Note (5-1000 characters)</label><textarea id={`n-${c.id}`} className="wn-input" style={{ height: 80, padding: 12 }} maxLength={1000} value={note} onChange={e => setNote(e.target.value)} data-testid="input-decision-note" /></div>
       <label style={lbl}><input type="checkbox" style={chk} checked={ok} onChange={e => setOk(e.target.checked)} data-testid="checkbox-decision-confirm" />I confirm I reviewed this commission and want to {mode === 'pay' ? 'pay it to the wallet' : mode}</label>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="wn-button" onClick={run} data-testid="button-confirm-decision">{busy && <LoaderCircle className="animate-spin" size={16} />}Confirm {mode}</button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+        <button className="wn-button" disabled={busy || !allowed} onClick={run} data-testid="button-confirm-decision">{busy && <LoaderCircle className="animate-spin" size={16} />}Confirm {mode}</button>
         <button className="wn-button wn-button-quiet" type="button" onClick={reset}>Cancel</button>
       </div>
-    </fieldset>}
+      </fieldset>
+      </DialogContent>
+    </Dialog>
     {open && <Audit id={c.id} />}
   </article>;
 }
@@ -272,5 +287,5 @@ export function AdminReferralDashboard() {
   const head = <div className="wn-page-head"><div className="wn-eyebrow">Administrator</div><h1 className="wn-display">Referral management.</h1><p>Rates, commission decisions and the verified commission fund. Paid means a verified transfer into the member wallet, not a GCash payout.</p></div>;
   if (me.data && me.data.role !== 'ADMIN') return <>{head}<div className="wn-empty" role="alert" data-testid="denied-admin-referrals"><div className="wn-empty-mark"><ShieldAlert size={21} /></div><h3>Administrators only</h3><p>Your account doesn’t have access to referral management.</p><Link href="/account" className="wn-link" style={{ marginTop: 14 }}>Back to account</Link></div></>;
   if (!me.data) return <>{head}<div className="wn-loading"><div className="wn-skeleton" /></div></>;
-  return <section className="wn-referral-content" data-testid="admin-referral-dashboard">{head}<div className="wn-grid"><Rates /><Fund /><Commissions /></div></section>;
+  return <section className="wn-referral-content" data-testid="admin-referral-dashboard">{head}<div className="wn-grid"><Commissions /><Rates /><Fund /></div></section>;
 }

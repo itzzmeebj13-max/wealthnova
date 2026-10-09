@@ -112,6 +112,8 @@ try {
       assert.deepEqual(commissions.map(c => [c.tier, c.rateBasisPoints, c.amount.toFixed(2)]),
         [[1, 2000, "70.00"], [2, 300, "10.50"], [3, 100, "3.50"]]);
       assert.deepEqual(commissions.map(c => c.beneficiaryId), [tier1, tier2, tier3]);
+      assert.deepEqual((await getReferralOverview(tier1, tx)).commissionTotals,
+        { total: "70.00", pending: "70.00", approved: "0.00", rejected: "0.00", paid: "0.00" });
       await tx.$queryRaw`SELECT wealthnova_generate_referral_commissions(${investment.id})::text`;
       assert.equal(await tx.referralCommission.count({ where: { investmentId: investment.id } }), 3);
       assert.equal(await tx.referralNotification.count({ where: { commissionId: { in: commissions.map(c => c.id) } } }), 3);
@@ -196,6 +198,10 @@ try {
       assert.equal((await tx.commissionFund.findUniqueOrThrow({ where: { id: "operating" } })).availableBalance.toFixed(2), "930.00");
       assert.equal((await tx.commissionFund.findUniqueOrThrow({ where: { id: "operating" } })).reservedBalance.toFixed(2), "0.00");
       assert.equal((await tx.wallet.findUniqueOrThrow({ where: { userId: tier2 } })).availableBalance.toFixed(2), "0.00");
+      assert.deepEqual((await getReferralOverview(tier1, tx)).commissionTotals,
+        { total: "175.00", pending: "105.00", approved: "0.00", rejected: "0.00", paid: "70.00" });
+      assert.deepEqual((await getReferralOverview(tier2, tx)).commissionTotals,
+        { total: "28.00", pending: "17.50", approved: "0.00", rejected: "10.50", paid: "0.00" });
       await json(await decision(commissions[2].id, "reject"));
       assert.equal((await decision(commissions[2].id, "approve")).status, 409);
       const notification = await tx.referralNotification.findFirstOrThrow({ where: { userId: tier1, type: "COMMISSION_PAID" } });

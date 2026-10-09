@@ -1209,8 +1209,11 @@ components:
               percent: { type: number }
         commissionTotals:
           type: object
-          required: [pending, approved, rejected, paid]
+          required: [total, pending, approved, rejected, paid]
           properties:
+            total:
+              type: string
+              description: All recorded commission amounts across all statuses, including rejected; not a spendable balance.
             pending: { type: string }
             approved: { type: string }
             rejected: { type: string }

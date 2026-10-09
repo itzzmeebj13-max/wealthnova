@@ -138,6 +138,7 @@ export const GetMyReferralsResponse = zod.object({
   "percent": zod.number()
 })),
   "commissionTotals": zod.object({
+  "total": zod.string().describe('All recorded commission amounts across all statuses, including rejected; not a spendable balance.'),
   "pending": zod.string(),
   "approved": zod.string(),
   "rejected": zod.string(),

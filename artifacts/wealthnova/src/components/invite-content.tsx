@@ -29,9 +29,14 @@ function Head() {
 
 function Notifications() {
   const client = useQueryClient();
-  const q = useGetReferralNotifications({ query: { queryKey: getGetReferralNotificationsQueryKey() } });
+  const q = useGetReferralNotifications({ query: { queryKey: getGetReferralNotificationsQueryKey(), refetchInterval: 15000 } });
   const ack = useAcknowledgeReferralNotification(REQ);
   const [err, setErr] = useState('');
+  if (q.isError) return <section className="wn-card wn-full" data-testid="error-referral-notifications">
+    <div className="wn-feedback error" role="alert">{errMsg(q.error, 'Could not load referral notifications.')}
+      <button className="wn-link" onClick={() => void q.refetch()}>Retry</button>
+    </div>
+  </section>;
   if (!q.data || q.data.length === 0) return null;
   return <section className="wn-card wn-full" data-testid="panel-referral-notifications">
     <div className="wn-panel-head"><h2>Updates</h2></div>
@@ -47,7 +52,7 @@ function History() {
   const [status, setStatus] = useState<Filter>('ALL');
   const [page, setPage] = useState(1);
   const params = { status, page };
-  const q = useGetMyCommissions(params, { query: { queryKey: getGetMyCommissionsQueryKey(params) } });
+  const q = useGetMyCommissions(params, { query: { queryKey: getGetMyCommissionsQueryKey(params), refetchInterval: 15000 } });
   const pages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   return <section className="wn-card wn-full" data-testid="panel-commission-history">
     <div className="wn-panel-head"><h2>Commission history</h2></div>
@@ -81,7 +86,7 @@ function History() {
 }
 
 export function InviteContent() {
-  const referrals = useGetMyReferrals({ query: { queryKey: getGetMyReferralsQueryKey() } });
+  const referrals = useGetMyReferrals({ query: { queryKey: getGetMyReferralsQueryKey(), refetchInterval: 15000 } });
   const [copyState, setCopyState] = useState('');
   const [copyError, setCopyError] = useState('');
   const copy = async (value: string, label: string) => {
@@ -106,7 +111,7 @@ export function InviteContent() {
           <div className="wn-card-label" style={{ marginBottom: 9 }}>Your referral link</div>
           <div className="wn-codebox">
             <a className="wn-inline-link" href={link} target="_blank" rel="noreferrer" data-testid="link-personal-referral">{link}</a>
-            <button className="wn-button wn-button-light" onClick={() => void copy(link, 'Link')} data-testid="button-copy-link"><Copy size={15} />{copyState === 'Link copied' ? 'Copied' : 'Copy link'}</button>
+            <button className="wn-button wn-button-light" onClick={() => void copy(link, 'Link')} data-testid="button-copy-link"><Copy size={15} />{copyState === 'Link copied' ? 'Copied' : 'Copy Referral Link'}</button>
           </div>
         </div>
         {copyState && <p role="status" className="wn-feedback" style={{ marginTop: 14, marginBottom: 0 }} data-testid="status-copy">{copyState}</p>}
@@ -128,6 +133,8 @@ export function InviteContent() {
       </section>
       <section className="wn-card wn-half" data-testid="panel-commission-totals">
         <div className="wn-panel-head"><h2>Commission totals</h2></div>
+        <div className="wn-summary-row"><span>Total commissions recorded</span><strong data-testid="total-commissions">{peso(r.commissionTotals.total)}</strong></div>
+        <p className="wn-helper">Total includes all statuses, including rejected records. Only paid wallet credits are spendable.</p>
         <div className="wn-summary-row"><span>Pending (no wallet funds)</span><strong data-testid="total-pending">{peso(r.commissionTotals.pending)}</strong></div>
         <div className="wn-summary-row"><span>Approved (reserved)</span><strong data-testid="total-approved">{peso(r.commissionTotals.approved)}</strong></div>
         <div className="wn-summary-row"><span>Rejected</span><strong data-testid="total-rejected">{peso(r.commissionTotals.rejected)}</strong></div>
